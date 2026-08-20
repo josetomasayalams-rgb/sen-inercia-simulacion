@@ -1,0 +1,22 @@
+{
+  "name": "sen-inercia",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Simulación educativa RMS/fasorial de inercia, GFL y GFM-VSM en el SEN chileno (Crucero 220 kV) — cinemática Three.js en el desierto de Atacama",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "tsc -p tsconfig.check.json && node .check/check/headless.js"
+  },
+  "dependencies": {
+    "three": "^0.185.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "@types/three": "^0.185.0",
+    "typescript": "~5.9.0",
+    "vite": "^8.0.0"
+  }
+}

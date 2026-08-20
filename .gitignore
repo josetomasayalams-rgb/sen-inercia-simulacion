@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.check/
+graphify-out/
+.DS_Store
+*.log
