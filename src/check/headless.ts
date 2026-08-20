@@ -287,6 +287,45 @@ console.log("\n== Criterio: la máquina síncrona mejora el ROCOF físico inicia
   );
 }
 
+console.log("\n== Criterio visual: inversores escalonados vs. térmica inercial ==");
+{
+  const sampleAfterTrip = (resource: ResourceKind) => {
+    const p = buildSunsetParams(resource);
+    return runSimulation(p, 1 / 240).samples.find((s) => s.t > p.events.tTripS + 1e-3)!;
+  };
+  const gfl = sampleAfterTrip("gfl-pq");
+  const gfm = sampleAfterTrip("gfm-vsm");
+  const thermal = sampleAfterTrip("thermal");
+  check(
+    "GFL-PQ muestra el salto instantáneo del ROCOF físico",
+    approx(gfl.rocofHzS, gfl.rocofPhysicalHzS, 1e-9) && gfl.rocofHzS < -0.8,
+    `mostrado=${gfl.rocofHzS}, físico=${gfl.rocofPhysicalHzS}`,
+  );
+  check(
+    "GFM muestra el salto instantáneo antes de su soporte virtual",
+    approx(gfm.rocofHzS, gfm.rocofPhysicalHzS, 1e-9)
+      && gfm.rocofHzS < -0.8
+      && Math.abs(gfm.pGfmMw) < 1e-6,
+    `mostrado=${gfm.rocofHzS}, físico=${gfm.rocofPhysicalHzS}, P=${gfm.pGfmMw} MW`,
+  );
+  const pGfm = buildSunsetParams("gfm-vsm");
+  const gfmSamples = runSimulation(pGfm, 1 / 240).samples;
+  const gfmAfter20ms = gfmSamples.reduce((a, b) =>
+    Math.abs(b.t - (pGfm.events.tTripS + 0.021)) < Math.abs(a.t - (pGfm.events.tTripS + 0.021)) ? b : a,
+  );
+  check(
+    "GFM comienza su inyección virtual algunos milisegundos después",
+    gfmAfter20ms.pGfmMw > 0.2,
+    `P a ~20 ms=${gfmAfter20ms.pGfmMw} MW`,
+  );
+  check(
+    "térmica conserva una entrada visual continua y menor ROCOF físico",
+    Math.abs(thermal.rocofHzS) < 0.1 * Math.abs(thermal.rocofPhysicalHzS)
+      && Math.abs(thermal.rocofPhysicalHzS) < Math.abs(gfl.rocofPhysicalHzS),
+    `mostrado=${thermal.rocofHzS}, físico térmico=${thermal.rocofPhysicalHzS}, físico GFL=${gfl.rocofPhysicalHzS}`,
+  );
+}
+
 console.log("\n== Criterio: límites de convertidor forman parte de la solución de red ==");
 {
   for (const resource of ["gfl-ffr", "gfm-vsm"] as const) {

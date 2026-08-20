@@ -225,8 +225,12 @@ export function stepSimulation(params: SimParams, s: SimState): void {
 
   const dfdt = areaFrequencyDerivativeHzS(imbalancePu, params.f0Hz, params.ePhysMWs, params.sBaseMva);
   s.rocofPhysicalHzS = dfdt;
-  const rocofAlpha = 1 - Math.exp(-dt / params.rocofDisplayTauS);
-  s.rocofHzS += rocofAlpha * (dfdt - s.rocofHzS);
+  if (params.rocofDisplayTauS > 0) {
+    const rocofAlpha = 1 - Math.exp(-dt / params.rocofDisplayTauS);
+    s.rocofHzS += rocofAlpha * (dfdt - s.rocofHzS);
+  } else {
+    s.rocofHzS = dfdt;
+  }
   s.fBusHz += dfdt * dt;
   s.thetaAreaRad += 2 * Math.PI * (s.fBusHz - params.f0Hz) * dt;
   s.eKinMWs = kineticEnergyMWs(params.ePhysMWs, s.fBusHz, params.f0Hz);

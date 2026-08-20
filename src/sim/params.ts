@@ -133,9 +133,10 @@ export function buildParams(resource: ResourceKind, scenarioId: string): SimPara
     bess: { eCapMWh: 880, etaDischarge: 0.95, soc0MWh: 0.9 * 880, socMinMWh: 0.05 * 880 },
     limits: { sMaxPu: 1.0, iMaxPu: 1.05 },
     events: { tTripS: 2.3, dTripPu: 1.0, tVoltageS: 2.35, dQLoadPu: 0.3 },
-    // El ROCOF físico sigue la ecuación de oscilación. La señal pública se
-    // presenta como una estimación filtrada, similar a una medición PMU.
-    rocofDisplayTauS: 0.18,
+    // El ROCOF físico siempre sigue la ecuación de oscilación. Para la máquina
+    // síncrona se muestra una estimación suavizada; en los inversores se deja
+    // el cambio instantáneo para hacer visible que no agregan inercia física.
+    rocofDisplayTauS: resource === "thermal" ? 0.18 : 0,
     dtS: 1 / 240,
     tEndS: 12,
   };

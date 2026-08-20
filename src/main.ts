@@ -219,8 +219,8 @@ function buildCharts(): void {
   if (mode === "historia") {
     chartF = new Chart(el("chart-f"), "Frecuencia de la red (Hz) — línea de referencia 50 Hz",
       [{ label: "f", color: "#f1c40f", unit: "Hz" }], 39.5, 50.4, cfg.tEnd, evts, () => highContrast);
-    chartRocof = new Chart(el("chart-rocof"), "ROCOF medido — velocidad de la caída (Hz/s)",
-      [{ label: "ROCOF medido", color: "#ff5d4d", unit: "Hz/s" }], -2.2, 0.8, cfg.tEnd, evts, () => highContrast);
+    chartRocof = new Chart(el("chart-rocof"), "ROCOF mostrado — velocidad de la caída (Hz/s)",
+      [{ label: "ROCOF", color: "#ff5d4d", unit: "Hz/s" }], -2.2, 0.8, cfg.tEnd, evts, () => highContrast);
     chartV = new Chart(el("chart-v"), "Tensión en Crucero 220 kV (pu)",
       [{ label: "V", color: "#39d3ff", unit: "pu" }], 0.95, 1.01, cfg.tEnd, evts, () => highContrast);
     chartPQ = new Chart(el("chart-pq"), "Potencia de apoyo del caso actual",
@@ -231,8 +231,8 @@ function buildCharts(): void {
   } else {
     chartF = new Chart(el("chart-f"), "f(t) — frecuencia del bus",
       [{ label: "f", color: "#f1c40f", unit: "Hz" }], 47, 50.6, TECH_CFG.tEnd, evts, () => highContrast);
-    chartRocof = new Chart(el("chart-rocof"), "ROCOF medido(t)",
-      [{ label: "ROCOF medido", color: "#ff5d4d", unit: "Hz/s" }], -2.5, 1, TECH_CFG.tEnd, evts, () => highContrast);
+    chartRocof = new Chart(el("chart-rocof"), "ROCOF mostrado(t)",
+      [{ label: "ROCOF", color: "#ff5d4d", unit: "Hz/s" }], -2.5, 1, TECH_CFG.tEnd, evts, () => highContrast);
     chartV = new Chart(el("chart-v"), "V(t) — tensión de barra",
       [{ label: "V", color: "#39d3ff", unit: "pu" }], 0.7, 1.08, TECH_CFG.tEnd, evts, () => highContrast);
     chartPQ = new Chart(el("chart-pq"), "P, Q — recurso de 200 MW",
@@ -315,7 +315,9 @@ function startStoryPhase(): void {
   chartF.setComparisonMode(false); chartRocof.setComparisonMode(false);
   chartV.setComparisonMode(false); chartPQ.setComparisonMode(false);
   chartF.setTitle("Frecuencia de la red (Hz) — referencia 50 Hz");
-  chartRocof.setTitle("ROCOF medido — velocidad de cambio (Hz/s)");
+  chartRocof.setTitle(phase.resource === "thermal"
+    ? "ROCOF térmico — respuesta suavizada por inercia física"
+    : "ROCOF del inversor — cambio instantáneo sin inercia física");
   chartV.setTitle("Tensión en Crucero 220 kV (pu)");
   chartPQ.setTitle("Potencia de apoyo del caso actual");
   chartF.setLimits(39.5, 50.4, cfg.tEnd);
@@ -410,7 +412,7 @@ function showStoryComparison(): void {
   chartF.setComparisonMode(true); chartRocof.setComparisonMode(true);
   chartV.setComparisonMode(true); chartPQ.setComparisonMode(true);
   chartF.setTitle("Comparación final · frecuencia");
-  chartRocof.setTitle("Comparación final · ROCOF medido");
+  chartRocof.setTitle("Comparación final · ROCOF");
   chartV.setTitle("Comparación final · tensión en Crucero 220 kV");
   chartPQ.setTitle("Potencia activa de apoyo · térmica vs. GFM");
   chartF.setLimits(39.5, 50.4, cfg.tEnd);
@@ -759,11 +761,11 @@ function captionStory(t: number): string {
   if (t < 8.8) {
     switch (phase.resource) {
       case "thermal":
-        return "La máquina síncrona reduce el ROCOF desde el primer instante con inercia física (H = 5 s ilustrativo). Después, su gobernador aumenta potencia activa y el AVR aporta reactivos.";
+        return "La inercia física ya está en el rotor antes del evento: reduce el ROCOF desde el primer instante y la curva se muestra suavizada. Después entran el gobernador y la turbina.";
       case "gfl-pq":
-        return "El GFL mide la red con PLL, pero aquí P/Q están fijos y no hay FFR: observar no equivale a prestar un servicio.";
+        return "El GFL no aporta inercia física: el ROCOF cambia de forma instantánea. Mide la red con PLL, pero aquí P/Q están fijos y no hay FFR.";
       case "gfm-vsm":
-        return "El GFM entrega potencia RMS con una subida rápida y amortiguada. El PWM conmuta mucho más rápido y queda filtrado; aquí se muestra la potencia útil para la red, no la portadora.";
+        return "El GFM tampoco tiene rotor: primero se ve el cambio instantáneo del ROCOF y, milisegundos después, su control virtual inyecta potencia activa para contrarrestarlo.";
       default:
         return "La respuesta depende del servicio configurado y de los límites físicos del recurso.";
     }
