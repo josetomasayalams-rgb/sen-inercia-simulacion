@@ -179,7 +179,7 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
 
     <footer id="chartbar">
       <canvas id="chart-f"></canvas>
-      <canvas id="chart-rocof"></canvas>
+      <canvas id="chart-rocof" aria-label="Comparación del ROCOF entre grid-following, térmica y grid-forming"></canvas>
       <canvas id="chart-v"></canvas>
       <canvas id="chart-pq"></canvas>
     </footer>

@@ -114,9 +114,16 @@ body.story-final #chartbar {
   height: 400px;
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "frequency rocof"
+    "voltage power";
   gap: 7px;
   background: linear-gradient(transparent, rgba(8, 12, 17, 0.96) 18%);
 }
+body.story-final #chart-f { grid-area: frequency; }
+body.story-final #chart-rocof { grid-area: rocof; }
+body.story-final #chart-v { grid-area: voltage; }
+body.story-final #chart-pq { grid-area: power; }
 body.story-final #controls > :not(#comparison) { display: none; }
 body.story-final #controls { width: 264px; padding: 8px 10px; gap: 0; }
 body.story-final #caption {

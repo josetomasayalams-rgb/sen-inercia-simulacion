@@ -412,7 +412,7 @@ function showStoryComparison(): void {
   chartF.setComparisonMode(true); chartRocof.setComparisonMode(true);
   chartV.setComparisonMode(true); chartPQ.setComparisonMode(true);
   chartF.setTitle("Comparación final · frecuencia");
-  chartRocof.setTitle("Comparación final · ROCOF");
+  chartRocof.setTitle("ROCOF · GFL vs. térmica vs. GFM");
   chartV.setTitle("Comparación final · tensión en Crucero 220 kV");
   chartPQ.setTitle("Potencia activa de apoyo · térmica vs. GFM");
   chartF.setLimits(39.5, 50.4, cfg.tEnd);
