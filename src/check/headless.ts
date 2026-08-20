@@ -378,11 +378,13 @@ for (const id of ["scr-3", "scr-2", "scr-1_5", "scr-1_25"]) {
 console.log("\n== Historia — mañana soleada, área equivalente de baja inercia ==");
 {
   const lanes = {
+    none: runSimulation(buildSunsetParams("none"), 1 / 60),
     thermal: runSimulation(buildSunsetParams("thermal"), 1 / 60),
     "gfl-pq": runSimulation(buildSunsetParams("gfl-pq"), 1 / 60),
     "gfm-vsm": runSimulation(buildSunsetParams("gfm-vsm"), 1 / 60),
   };
   const m = {
+    none: computeMetrics(lanes.none.samples, buildSunsetParams("none").events.tTripS),
     thermal: computeMetrics(lanes.thermal.samples, buildSunsetParams("thermal").events.tTripS),
     "gfl-pq": computeMetrics(lanes["gfl-pq"].samples, buildSunsetParams("gfl-pq").events.tTripS),
     "gfm-vsm": computeMetrics(lanes["gfm-vsm"].samples, buildSunsetParams("gfm-vsm").events.tTripS),
@@ -394,6 +396,23 @@ console.log("\n== Historia — mañana soleada, área equivalente de baja inerci
     `ROCOF0 historia ≈ ${rocofTheory(0.8, 4200, 200).toFixed(3)} Hz/s`,
     approx(m["gfl-pq"].rocof0HzS, rocofTheory(0.8, 4200, 200), 0.02),
     `got ${m["gfl-pq"].rocof0HzS}`,
+  );
+  const referenceDiff = Math.max(...lanes.none.samples.map((s, i) => Math.max(
+    Math.abs(s.fHz - lanes["gfl-pq"].samples[i].fHz),
+    Math.abs(s.vPu - lanes["gfl-pq"].samples[i].vPu),
+    Math.abs(s.rocofHzS - lanes["gfl-pq"].samples[i].rocofHzS),
+  )));
+  check(
+    "historia: Sin soporte y GFL-PQ reciben el mismo evento y coinciden",
+    referenceDiff < 1e-9
+      && buildSunsetParams("none").events.tTripS === buildSunsetParams("gfl-pq").events.tTripS
+      && buildSunsetParams("none").events.tVoltageS === buildSunsetParams("gfl-pq").events.tVoltageS,
+    `máxima diferencia=${referenceDiff}`,
+  );
+  check(
+    "historia: Sin soporte no inyecta P ni Q",
+    m.none.pSupportMaxMw < 1e-9 && m.none.qSupportMaxMvar < 1e-9,
+    `Pmax=${m.none.pSupportMaxMw}, Qmax=${m.none.qSupportMaxMvar}`,
   );
   check(
     "térmica sostiene la frecuencia (nadir > 47 Hz)",

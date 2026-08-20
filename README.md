@@ -2,8 +2,9 @@
 
 Simulación educativa 3D de frecuencia, tensión, inercia, GFL y GFM-VSM sobre una barra equivalente de 220 kV.
 
-Está pensada para público general: permite comparar, con la misma perturbación, tres casos:
+Está pensada para público general: permite comparar, con la misma perturbación, cuatro casos:
 
+- Referencia sin soporte complementario.
 - BESS grid-following con P/Q fijo, sin soporte configurado.
 - Generador térmico síncrono.
 - BESS grid-forming con VSM y soporte P/Q limitado.
@@ -20,6 +21,8 @@ npm run check
 ```
 
 El modelo usa paso fijo `dt=1/240 s`, límites de potencia aparente/corriente/SOC y mantiene separado el solver físico del render. El caso GFL-PQ sigue la red mediante PLL, pero no aporta por frecuencia porque no tiene PFR, FFR ni Volt/Var configurado. Un GFL con esos servicios sí puede aportar; GFL no significa pasividad universal.
+
+La formulación matemática, los supuestos y la correspondencia entre cada ecuación y el código están documentados en [docs/modelo-fisico.md](docs/modelo-fisico.md).
 
 ## Alcance
 

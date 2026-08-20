@@ -28,6 +28,7 @@ interface StoryPhase {
 }
 
 const STORY_PHASES: StoryPhase[] = [
+  { resource: "none", title: "Sin soporte · respuesta natural de la red", shortLabel: "Sin soporte" },
   { resource: "gfl-pq", title: "Grid-following · solo escucha la red", shortLabel: "GFL-PQ" },
   { resource: "thermal", title: "Térmica · máquina síncrona", shortLabel: "Térmica" },
   { resource: "gfm-vsm", title: "Grid-forming · máquina síncrona virtual", shortLabel: "GFM-VSM" },
@@ -97,7 +98,7 @@ let highContrast = true;
 let mode: AppMode = "historia";
 let cfg = STORY_CFG;
 
-// --- tres corridas comparables (historia) / recurso seleccionable (técnico) ---
+// --- cuatro corridas comparables (historia) / recurso seleccionable (técnico) ---
 let storyPhaseIndex = 0;
 let sim: Simulation = createSimulation(buildSunsetParams(STORY_PHASES[0].resource));
 let prevSnap: SimSnapshot = sim.snapshot();
@@ -412,7 +413,7 @@ function showStoryComparison(): void {
   chartF.setComparisonMode(true); chartRocof.setComparisonMode(true);
   chartV.setComparisonMode(true); chartPQ.setComparisonMode(true);
   chartF.setTitle("Comparación final · frecuencia");
-  chartRocof.setTitle("ROCOF · GFL vs. térmica vs. GFM");
+  chartRocof.setTitle("ROCOF · referencia vs. GFL vs. térmica vs. GFM");
   chartV.setTitle("Comparación final · tensión en Crucero 220 kV");
   chartPQ.setTitle("Potencia activa de apoyo · térmica vs. GFM");
   chartF.setLimits(39.5, 50.4, cfg.tEnd);
@@ -432,7 +433,7 @@ function showStoryComparison(): void {
       chartPQ.addOverlay({ t: rec.traceT, values: [rec.traceP] }, color, phase.shortLabel);
     }
   }
-  hud.setPhase({ index: STORY_PHASES.length, total: STORY_PHASES.length, title: "Comparación final de las tres respuestas" });
+  hud.setPhase({ index: STORY_PHASES.length, total: STORY_PHASES.length, title: "Comparación final de las cuatro respuestas" });
   refreshStoryTable();
 }
 
@@ -743,7 +744,7 @@ function updateEffects(tSim: number, vPu: number): void {
 
 function captionStory(t: number): string {
   if (finished) {
-    return "Comparación final ampliada: frecuencia, ROCOF y tensión de los tres casos; abajo se compara la potencia activa adicional de la térmica y del GFM.";
+    return "Comparación final: la referencia y el GFL-PQ coinciden porque ninguno aporta soporte; la térmica y el GFM sí modifican la respuesta, por mecanismos distintos.";
   }
   const phase = STORY_PHASES[storyPhaseIndex];
   if (t < 2.0) {
@@ -760,6 +761,8 @@ function captionStory(t: number): string {
   }
   if (t < 8.8) {
     switch (phase.resource) {
+      case "none":
+        return "Esta es la referencia: no entra potencia activa ni reactiva adicional. El déficit queda sobre la red y la frecuencia continúa cayendo.";
       case "thermal":
         return "La inercia física ya está en el rotor antes del evento: reduce el ROCOF desde el primer instante y la curva se muestra suavizada. Después entran el gobernador y la turbina.";
       case "gfl-pq":
