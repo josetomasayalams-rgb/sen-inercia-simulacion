@@ -244,19 +244,27 @@ console.log("\n== Criterio: térmica con gobernador mejora el nadir frente a GFL
   const nearest = (t: number) => thermalRocof.reduce((a, b) =>
     Math.abs(b.t - t) < Math.abs(a.t - t) ? b : a,
   );
-  const rocof500ms = nearest(2.3 + 0.5).rocofHzS;
-  const rocof1s = nearest(2.3 + 1.0).rocofHzS;
-  const rocofAtVoltageEvent = nearest(2.35).rocofHzS;
-  const rocofAfterVoltageEvent = nearest(2.4).rocofHzS;
+  const justAfter = nearest(2.3 + 1 / 240);
+  const rocof50ms = nearest(2.35).rocofHzS;
+  const rocof150ms = nearest(2.45).rocofHzS;
+  const pMech50ms = nearest(2.35).pMechMw;
+  const pMech1s = nearest(3.3).pMechMw;
   check(
-    "térmica: el RoCoF se aplana progresivamente después del inicio",
-    Math.abs(rocof1s) < Math.abs(rocof500ms) && rocof500ms < 0 && rocof1s < 0,
-    `ROCOF 0,5 s=${rocof500ms.toFixed(4)}, 1 s=${rocof1s.toFixed(4)}`,
+    "térmica: la derivada física cambia al ocurrir el déficit",
+    justAfter.rocofPhysicalHzS < -0.5,
+    `ROCOF físico inicial=${justAfter.rocofPhysicalHzS.toFixed(4)} Hz/s`,
   );
   check(
-    "térmica: el evento reactivo no crea un salto mecánico instantáneo",
-    Math.abs(rocofAfterVoltageEvent - rocofAtVoltageEvent) < 0.01,
-    `antes Q=${rocofAtVoltageEvent.toFixed(4)}, después Q=${rocofAfterVoltageEvent.toFixed(4)}`,
+    "térmica: el ROCOF mostrado entra continuamente, sin escalón gráfico",
+    Math.abs(justAfter.rocofHzS) < 0.1 * Math.abs(justAfter.rocofPhysicalHzS)
+      && rocof50ms < justAfter.rocofHzS
+      && rocof150ms < rocof50ms,
+    `mostrado inicial=${justAfter.rocofHzS.toFixed(4)}, 50 ms=${rocof50ms.toFixed(4)}, 150 ms=${rocof150ms.toFixed(4)}`,
+  );
+  check(
+    "térmica: primero responde la inercia; gobernador y turbina entran después",
+    pMech50ms < 40.1 && pMech1s > pMech50ms + 1,
+    `Pm 50 ms=${pMech50ms.toFixed(3)} MW, Pm 1 s=${pMech1s.toFixed(3)} MW`,
   );
 }
 

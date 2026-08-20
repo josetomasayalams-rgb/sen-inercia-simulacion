@@ -220,8 +220,8 @@ function buildCharts(): void {
   if (mode === "historia") {
     chartF = new Chart(el("chart-f"), "Frecuencia de la red (Hz) — línea de referencia 50 Hz",
       [{ label: "f", color: "#f1c40f", unit: "Hz" }], 39.5, 50.4, cfg.tEnd, evts, () => highContrast);
-    chartRocof = new Chart(el("chart-rocof"), "ROCOF — velocidad de la caída (Hz/s)",
-      [{ label: "ROCOF", color: "#ff5d4d", unit: "Hz/s" }], -2.2, 0.8, cfg.tEnd, evts, () => highContrast);
+    chartRocof = new Chart(el("chart-rocof"), "ROCOF medido — velocidad de la caída (Hz/s)",
+      [{ label: "ROCOF medido", color: "#ff5d4d", unit: "Hz/s" }], -2.2, 0.8, cfg.tEnd, evts, () => highContrast);
     chartV = new Chart(el("chart-v"), "Tensión en Crucero 220 kV (pu)",
       [{ label: "V", color: "#39d3ff", unit: "pu" }], 0.95, 1.01, cfg.tEnd, evts, () => highContrast);
     chartPQ = new Chart(el("chart-pq"), "Potencia de apoyo del caso actual",
@@ -232,8 +232,8 @@ function buildCharts(): void {
   } else {
     chartF = new Chart(el("chart-f"), "f(t) — frecuencia del bus",
       [{ label: "f", color: "#f1c40f", unit: "Hz" }], 47, 50.6, TECH_CFG.tEnd, evts, () => highContrast);
-    chartRocof = new Chart(el("chart-rocof"), "ROCOF(t)",
-      [{ label: "ROCOF", color: "#ff5d4d", unit: "Hz/s" }], -2.5, 1, TECH_CFG.tEnd, evts, () => highContrast);
+    chartRocof = new Chart(el("chart-rocof"), "ROCOF medido(t)",
+      [{ label: "ROCOF medido", color: "#ff5d4d", unit: "Hz/s" }], -2.5, 1, TECH_CFG.tEnd, evts, () => highContrast);
     chartV = new Chart(el("chart-v"), "V(t) — tensión de barra",
       [{ label: "V", color: "#39d3ff", unit: "pu" }], 0.7, 1.08, TECH_CFG.tEnd, evts, () => highContrast);
     chartPQ = new Chart(el("chart-pq"), "P, Q — recurso de 200 MW",
@@ -316,7 +316,7 @@ function startStoryPhase(): void {
   chartF.setComparisonMode(false); chartRocof.setComparisonMode(false);
   chartV.setComparisonMode(false); chartPQ.setComparisonMode(false);
   chartF.setTitle("Frecuencia de la red (Hz) — referencia 50 Hz");
-  chartRocof.setTitle("ROCOF — velocidad de cambio (Hz/s)");
+  chartRocof.setTitle("ROCOF medido — velocidad de cambio (Hz/s)");
   chartV.setTitle("Tensión en Crucero 220 kV (pu)");
   chartPQ.setTitle("Potencia de apoyo del caso actual");
   chartF.setLimits(39.5, 50.4, cfg.tEnd);
@@ -411,7 +411,7 @@ function showStoryComparison(): void {
   chartF.setComparisonMode(true); chartRocof.setComparisonMode(true);
   chartV.setComparisonMode(true); chartPQ.setComparisonMode(true);
   chartF.setTitle("Comparación final · frecuencia");
-  chartRocof.setTitle("Comparación final · ROCOF");
+  chartRocof.setTitle("Comparación final · ROCOF medido");
   chartV.setTitle("Comparación final · tensión en Crucero 220 kV");
   chartPQ.setTitle("Potencia activa de apoyo · térmica vs. GFM");
   chartF.setLimits(39.5, 50.4, cfg.tEnd);
@@ -459,7 +459,7 @@ function archiveRun(): void {
   let tNadir = 0;
   let vMin = Number.POSITIVE_INFINITY;
   for (const s of runSamples) {
-    if (rocof0 === 0 && s.t > TECH_CFG.tTripS + 1e-3) rocof0 = s.rocofHzS;
+    if (rocof0 === 0 && s.t > TECH_CFG.tTripS + 1e-3) rocof0 = s.rocofPhysicalHzS;
     if (s.fHz < nadir) { nadir = s.fHz; tNadir = s.t; }
     if (s.vPu < vMin) vMin = s.vPu;
   }  history.set(key, {

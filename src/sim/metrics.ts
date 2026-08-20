@@ -25,7 +25,7 @@ export function computeMetrics(samples: SimSnapshot[], tEventS: number): RunMetr
   for (const s of samples) {
     if (!s.converged) anyNonConverged = true;
     if (!foundRocof && s.t > tEventS + 1e-3) {
-      rocof0HzS = s.rocofHzS;
+      rocof0HzS = s.rocofPhysicalHzS;
       foundRocof = true;
     }
     if (s.fHz < nadirHz) {

@@ -30,6 +30,7 @@ export function createInitialState(params: SimParams): SimState {
   const state: SimState = {
     t: 0,
     fBusHz: params.f0Hz,
+    rocofPhysicalHzS: 0,
     rocofHzS: 0,
     thetaAreaRad: 0,
     eKinMWs: eKin0,
@@ -44,6 +45,7 @@ export function createInitialState(params: SimParams): SimState {
       pGovPu: thermalP0Pu,
       pValvePu: thermalP0Pu,
       pMechPu: thermalP0Pu,
+      fGovernorHz: params.f0Hz,
       ePrimePu: params.avr.e0Pu,
       deltaRad: delta0,
       pElecPu: thermalP0Pu,
@@ -159,6 +161,7 @@ export function makeSnapshot(params: SimParams, s: SimState): SimSnapshot {
   return {
     t: s.t,
     fHz: s.fBusHz,
+    rocofPhysicalHzS: s.rocofPhysicalHzS,
     rocofHzS: s.rocofHzS,
     vPu: s.solver.vMagPu,
     vAngRad: s.solver.vAngRad,

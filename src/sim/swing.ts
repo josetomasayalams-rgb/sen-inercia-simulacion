@@ -24,6 +24,7 @@ export interface GovernorState {
   pGovStarPu: number;
   pValvePu: number;
   pMechPu: number;
+  fMeasuredHz: number;
 }
 
 export function stepGovernor(
@@ -33,14 +34,19 @@ export function stepGovernor(
   p: GovernorParams,
   dt: number,
 ): GovernorState {
-  const dfPu = (fHz - f0Hz) / f0Hz;
+  const fMeasuredHz = g.fMeasuredHz + ((fHz - g.fMeasuredHz) / p.tauMeasurementS) * dt;
+  const dfMeasuredHz = fMeasuredHz - f0Hz;
+  const dfOutsideDeadbandHz = Math.abs(dfMeasuredHz) <= p.deadbandHz
+    ? 0
+    : dfMeasuredHz - Math.sign(dfMeasuredHz) * p.deadbandHz;
+  const dfPu = dfOutsideDeadbandHz / f0Hz;
   // El droop actúa alrededor del despacho sincronizado P0. Sin este sesgo,
   // una unidad en reserva rodante se vaciaría antes de cualquier evento.
   const raw = p.p0Pu - dfPu / p.droopR;
   const pGovStarPu = Math.min(p.pMaxPu, Math.max(p.pMinPu, raw));
   const pValvePu = g.pValvePu + ((pGovStarPu - g.pValvePu) / p.tauGovS) * dt;
   const pMechPu = g.pMechPu + ((pValvePu - g.pMechPu) / p.tauTurbS) * dt;
-  return { pGovStarPu, pValvePu, pMechPu };
+  return { pGovStarPu, pValvePu, pMechPu, fMeasuredHz };
 }
 
 export interface AvrState {

@@ -35,7 +35,12 @@ export function stepSimulation(params: SimParams, s: SimState): void {
 
   if (isThermal) {
     const gov = stepGovernor(
-      { pGovStarPu: s.machine.pGovPu, pValvePu: s.machine.pValvePu, pMechPu: s.machine.pMechPu },
+      {
+        pGovStarPu: s.machine.pGovPu,
+        pValvePu: s.machine.pValvePu,
+        pMechPu: s.machine.pMechPu,
+        fMeasuredHz: s.machine.fGovernorHz,
+      },
       s.fBusHz,
       params.f0Hz,
       params.governor,
@@ -44,6 +49,7 @@ export function stepSimulation(params: SimParams, s: SimState): void {
     s.machine.pGovPu = gov.pGovStarPu;
     s.machine.pValvePu = gov.pValvePu;
     s.machine.pMechPu = gov.pMechPu;
+    s.machine.fGovernorHz = gov.fMeasuredHz;
 
     const avr = stepAvr({ ePrimePu: s.machine.ePrimePu }, vMagPrev, 1.0, params.avr, dt);
     s.machine.ePrimePu = avr.ePrimePu;
@@ -218,7 +224,9 @@ export function stepSimulation(params: SimParams, s: SimState): void {
   s.pImbalancePu = imbalancePu;
 
   const dfdt = areaFrequencyDerivativeHzS(imbalancePu, params.f0Hz, params.ePhysMWs, params.sBaseMva);
-  s.rocofHzS = dfdt;
+  s.rocofPhysicalHzS = dfdt;
+  const rocofAlpha = 1 - Math.exp(-dt / params.rocofDisplayTauS);
+  s.rocofHzS += rocofAlpha * (dfdt - s.rocofHzS);
   s.fBusHz += dfdt * dt;
   s.thetaAreaRad += 2 * Math.PI * (s.fBusHz - params.f0Hz) * dt;
   s.eKinMWs = kineticEnergyMWs(params.ePhysMWs, s.fBusHz, params.f0Hz);

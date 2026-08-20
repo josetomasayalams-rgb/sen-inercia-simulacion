@@ -87,7 +87,16 @@ export function buildParams(resource: ResourceKind, scenarioId: string): SimPara
     loadQPu: 0.15,
     // Supuesto pedagógico explícito: unidad sincronizada en reserva rodante,
     // 40 MW iniciales y 160 MW de margen hasta Pmax=200 MW.
-    governor: { p0Pu: 0.2, droopR: 0.05, tauGovS: 0.3, tauTurbS: 0.5, pMinPu: 0, pMaxPu: 1.0 },
+    governor: {
+      p0Pu: 0.2,
+      droopR: 0.05,
+      tauMeasurementS: 0.12,
+      deadbandHz: 0.03,
+      tauGovS: 0.3,
+      tauTurbS: 0.8,
+      pMinPu: 0,
+      pMaxPu: 1.0,
+    },
     avr: { e0Pu: 1.0, gainKa: 30, tauAs: 0.03, eMinPu: 0.8, eMaxPu: 1.3, xdPrimePu: 0.3 },
     machine: { inertiaHs: 5, ratingMva: 250, syncTauS: 0.08, deltaMaxRad: 1.2 },
     pll: { kp: 20, ki: 200 },
@@ -124,6 +133,9 @@ export function buildParams(resource: ResourceKind, scenarioId: string): SimPara
     bess: { eCapMWh: 880, etaDischarge: 0.95, soc0MWh: 0.9 * 880, socMinMWh: 0.05 * 880 },
     limits: { sMaxPu: 1.0, iMaxPu: 1.05 },
     events: { tTripS: 2.3, dTripPu: 1.0, tVoltageS: 2.35, dQLoadPu: 0.3 },
+    // El ROCOF físico sigue la ecuación de oscilación. La señal pública se
+    // presenta como una estimación filtrada, similar a una medición PMU.
+    rocofDisplayTauS: 0.18,
     dtS: 1 / 240,
     tEndS: 12,
   };

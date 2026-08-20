@@ -6,6 +6,10 @@ export interface GovernorParams {
   /** Despacho inicial de la unidad sincronizada; no es soporte adicional. */
   p0Pu: number;
   droopR: number;
+  /** Filtro de medición de velocidad/frecuencia del gobernador. */
+  tauMeasurementS: number;
+  /** Banda muerta simétrica antes de ordenar apertura de válvula. */
+  deadbandHz: number;
   tauGovS: number;
   tauTurbS: number;
   pMinPu: number;
@@ -108,6 +112,8 @@ export interface SimParams {
   bess: BessParams;
   limits: LimitParams;
   events: EventParams;
+  /** Constante de tiempo del estimador de ROCOF mostrado al público. */
+  rocofDisplayTauS: number;
   dtS: number;
   tEndS: number;
 }
@@ -116,6 +122,7 @@ export interface MachineState {
   pGovPu: number;
   pValvePu: number;
   pMechPu: number;
+  fGovernorHz: number;
   ePrimePu: number;
   deltaRad: number;
   pElecPu: number;
@@ -168,6 +175,9 @@ export interface SolverResult {
 export interface SimState {
   t: number;
   fBusHz: number;
+  /** Derivada física instantánea usada para integrar la frecuencia. */
+  rocofPhysicalHzS: number;
+  /** ROCOF estimado/filtrado mostrado en HUD y gráficas. */
   rocofHzS: number;
   thetaAreaRad: number;
   eKinMWs: number;
@@ -189,6 +199,7 @@ export interface SimState {
 export interface SimSnapshot {
   t: number;
   fHz: number;
+  rocofPhysicalHzS: number;
   rocofHzS: number;
   vPu: number;
   vAngRad: number;
