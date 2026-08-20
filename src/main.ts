@@ -28,9 +28,8 @@ interface StoryPhase {
 }
 
 const STORY_PHASES: StoryPhase[] = [
-  { resource: "none", title: "Sin servicio complementario", shortLabel: "Sin apoyo" },
-  { resource: "thermal", title: "Térmica · máquina síncrona", shortLabel: "Térmica" },
   { resource: "gfl-pq", title: "Grid-following · solo escucha la red", shortLabel: "GFL-PQ" },
+  { resource: "thermal", title: "Térmica · máquina síncrona", shortLabel: "Térmica" },
   { resource: "gfm-vsm", title: "Grid-forming · máquina síncrona virtual", shortLabel: "GFM-VSM" },
 ];
 const FLOW_END = new THREE.Vector3(-10, 8.2, 0);
@@ -98,7 +97,7 @@ let highContrast = true;
 let mode: AppMode = "historia";
 let cfg = STORY_CFG;
 
-// --- cuatro corridas comparables (historia) / recurso seleccionable (técnico) ---
+// --- tres corridas comparables (historia) / recurso seleccionable (técnico) ---
 let storyPhaseIndex = 0;
 let sim: Simulation = createSimulation(buildSunsetParams(STORY_PHASES[0].resource));
 let prevSnap: SimSnapshot = sim.snapshot();
@@ -431,7 +430,7 @@ function showStoryComparison(): void {
       chartPQ.addOverlay({ t: rec.traceT, values: [rec.traceP] }, color, phase.shortLabel);
     }
   }
-  hud.setPhase({ index: STORY_PHASES.length, total: STORY_PHASES.length, title: "Comparación final de las cuatro respuestas" });
+  hud.setPhase({ index: STORY_PHASES.length, total: STORY_PHASES.length, title: "Comparación final de las tres respuestas" });
   refreshStoryTable();
 }
 
@@ -742,7 +741,7 @@ function updateEffects(tSim: number, vPu: number): void {
 
 function captionStory(t: number): string {
   if (finished) {
-    return "Comparación final ampliada: frecuencia, ROCOF y tensión de los cuatro casos; abajo se compara la potencia activa adicional de la térmica y del GFM.";
+    return "Comparación final ampliada: frecuencia, ROCOF y tensión de los tres casos; abajo se compara la potencia activa adicional de la térmica y del GFM.";
   }
   const phase = STORY_PHASES[storyPhaseIndex];
   if (t < 2.0) {
@@ -759,8 +758,6 @@ function captionStory(t: number): string {
   }
   if (t < 8.8) {
     switch (phase.resource) {
-      case "none":
-        return "Sin servicio complementario nadie reemplaza los MW perdidos: la frecuencia sigue cayendo y la tensión queda determinada por la red y la carga.";
       case "thermal":
         return "La máquina síncrona reduce el ROCOF desde el primer instante con inercia física (H = 5 s ilustrativo). Después, su gobernador aumenta potencia activa y el AVR aporta reactivos.";
       case "gfl-pq":
@@ -786,8 +783,6 @@ function captionTech(t: number): string {
   }
   if (t < 7.5) {
     switch (techResource) {
-      case "none":
-        return "ACTO 3 — Sin servicio complementario: no aparece potencia de apoyo y la frecuencia continúa cayendo dentro de la ventana simulada.";
       case "thermal":
         return "ACTO 3 — Térmica síncrona: la energía cinética se libera de inmediato, sin medir la frecuencia; luego el gobernador abre la válvula.";
       case "gfl-pq":

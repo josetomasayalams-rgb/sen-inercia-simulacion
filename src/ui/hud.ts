@@ -92,7 +92,7 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
       </div>
       <label>Modo
         <select id="sel-mode">
-          <option value="historia" selected>Historia (cuatro casos comparables)</option>
+          <option value="historia" selected>Historia (tres casos comparables)</option>
           <option value="tecnico">Modo técnico (Crucero)</option>
         </select>
       </label>
@@ -150,7 +150,7 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
     <section id="lanes" class="hidden">
       <div class="lane" data-lane="0">
         <span class="dot"></span>
-        <span class="lname">Sin apoyo</span>
+        <span class="lname">GFL-PQ</span>
         <span class="lf">50,00 <small>Hz</small></span>
         <span class="lp">0 MW</span>
         <span class="lst">—</span>
@@ -163,13 +163,6 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
         <span class="lst">—</span>
       </div>
       <div class="lane" data-lane="2">
-        <span class="dot"></span>
-        <span class="lname">GFL-PQ</span>
-        <span class="lf">50,00 <small>Hz</small></span>
-        <span class="lp">0 MW</span>
-        <span class="lst">—</span>
-      </div>
-      <div class="lane" data-lane="3">
         <span class="dot"></span>
         <span class="lname">GFM-VSM</span>
         <span class="lf">50,00 <small>Hz</small></span>
@@ -196,6 +189,7 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
 
   const selResource = $<HTMLSelectElement>("sel-resource");
   for (const [key, label] of Object.entries(RESOURCE_LABELS)) {
+    if (key === "none") continue;
     const opt = document.createElement("option");
     opt.value = key;
     opt.textContent = label;
@@ -234,7 +228,7 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
 
   const fmt = (v: number, d = 1): string => v.toFixed(d).replace(".", ",");
   const laneEls = Array.from(root.querySelectorAll<HTMLElement>("#lanes .lane"));
-  const LANE_DOTS = ["#ff5d4d", "#e67e22", "#3498db", "#2ecc71"];
+  const LANE_DOTS = ["#3498db", "#e67e22", "#2ecc71"];
 
   function laneState(fHz: number): { label: string; cls: string } {
     if (fHz >= 48) return { label: "SOSTIENE", cls: "ok" };
@@ -331,13 +325,13 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
     $("btn-skip").classList.toggle("hidden", !hist);
     $("phase-banner").classList.toggle("hidden", true);
     document.title = hist
-      ? "¿Quién sostiene la red? — cuatro casos comparables"
+      ? "¿Quién sostiene la red? — tres casos comparables"
       : "SEN — Inercia, GFL y GFM-VSM · Crucero 220 kV";
     $("title").querySelector("h1")!.textContent = hist
       ? "¿Quién sostiene la red?"
       : "SEN — inercia, GFL y GFM-VSM";
     $("title").querySelector(".sub")!.textContent = hist
-      ? "Mismo evento · sin apoyo, térmica, GFL y GFM · comparación final"
+      ? "Mismo evento · GFL, térmica y GFM · comparación final"
       : "Crucero 220 kV · Norte Grande · equivalente RMS educativo";
     const cmpH2 = $("comparison").querySelector("h2");
     if (cmpH2) cmpH2.textContent = hist ? "Comparación final del mismo evento" : "Comparación del mismo evento";
