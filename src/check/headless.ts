@@ -239,6 +239,25 @@ console.log("\n== Criterio: térmica con gobernador mejora el nadir frente a GFL
   const maxAngle = Math.max(...thermalSamples.map((s) => Math.abs(s.machineDeltaRad)));
   check("térmica: el ángulo interno responde al gobernador", maxAngle > 0.02, `delta_max=${maxAngle} rad`);
   check("térmica: P eléctrica sigue P mecánica (< 10 MW)", maxPmPeError < 10, `error_max=${maxPmPeError} MW`);
+
+  const thermalRocof = runSimulation(buildSunsetParams("thermal"), 1 / 240).samples;
+  const nearest = (t: number) => thermalRocof.reduce((a, b) =>
+    Math.abs(b.t - t) < Math.abs(a.t - t) ? b : a,
+  );
+  const rocof500ms = nearest(2.3 + 0.5).rocofHzS;
+  const rocof1s = nearest(2.3 + 1.0).rocofHzS;
+  const rocofAtVoltageEvent = nearest(2.35).rocofHzS;
+  const rocofAfterVoltageEvent = nearest(2.4).rocofHzS;
+  check(
+    "térmica: el RoCoF se aplana progresivamente después del inicio",
+    Math.abs(rocof1s) < Math.abs(rocof500ms) && rocof500ms < 0 && rocof1s < 0,
+    `ROCOF 0,5 s=${rocof500ms.toFixed(4)}, 1 s=${rocof1s.toFixed(4)}`,
+  );
+  check(
+    "térmica: el evento reactivo no crea un salto mecánico instantáneo",
+    Math.abs(rocofAfterVoltageEvent - rocofAtVoltageEvent) < 0.01,
+    `antes Q=${rocofAtVoltageEvent.toFixed(4)}, después Q=${rocofAfterVoltageEvent.toFixed(4)}`,
+  );
 }
 
 console.log("\n== Criterio: la máquina síncrona mejora el ROCOF físico inicial ==");

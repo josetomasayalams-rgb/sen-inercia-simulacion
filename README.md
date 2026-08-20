@@ -9,7 +9,7 @@ Está pensada para público general: permite comparar, con la misma perturbació
 - BESS grid-following con P/Q fijo, sin soporte configurado.
 - BESS grid-forming con VSM y soporte P/Q limitado.
 
-La historia usa una pérdida equivalente de generación de `160 MW` a `t=2,30 s` y un evento reactivo separado de `+60 MVAr` a `t=2,35 s`. La frecuencia, el ROCOF, la tensión y la potencia se calculan desde un solver RMS/fasorial de una barra y se muestran en una cinemática Three.js.
+La historia usa una pérdida equivalente de generación de `160 MW` a `t=2,30 s` y un evento reactivo separado de `+60 MVAr` a `t=2,35 s`. La frecuencia, el ROCOF, la tensión y la potencia se calculan desde un solver RMS/fasorial de una barra y se muestran en una cinemática Three.js. En la térmica, la energía cinética `H·S` reduce el ROCOF inicial y el gobernador/turbina suavizan progresivamente la pendiente posterior.
 
 ## Verificación
 

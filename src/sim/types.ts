@@ -26,8 +26,9 @@ export interface SynchronousMachineParams {
   inertiaHs: number;
   /** Potencia nominal usada para E_machine = H·S. */
   ratingMva: number;
-  /** Seguimiento cuasiestacionario del ángulo rotor–barra; no agrega inercia al área. */
+  /** Seguimiento cuasiestacionario del ángulo rotor–barra en el modelo fasorial reducido. */
   syncTauS: number;
+  /** Límite educativo del ángulo rotor–barra durante la simulación fasorial. */
   deltaMaxRad: number;
 }
 

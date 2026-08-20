@@ -206,7 +206,11 @@ export function stepSimulation(params: SimParams, s: SimState): void {
 
   // Balance del área: suma los aportes de todos los recursos activos.
   const pSupportPu =
-    (isThermal ? s.machine.pElecPu : 0) +
+    // La ecuación de oscilación del área usa la entrada mecánica de la
+    // unidad síncrona. Pe ya está representada por el balance de red; usarla
+    // aquí haría que un transitorio eléctrico por tensión pareciera una
+    // respuesta mecánica instantánea de frecuencia.
+    (isThermal ? s.machine.pMechPu : 0) +
     (isGfl ? s.gfl.pPu : 0) +
     (isGfm ? s.gfm.pPu : 0);
   const imbalancePu =
