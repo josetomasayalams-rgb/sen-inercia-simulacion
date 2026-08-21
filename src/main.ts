@@ -551,9 +551,14 @@ renderer.setAnimationLoop((timestamp: number) => {
   // --- telemetría exacta por recurso (mismo snapshot que el HUD) ---
   if (mode === "historia") {
     const storyResource = STORY_PHASES[storyPhaseIndex].resource;
-    const thermalLoad = storyResource === "thermal"
-      ? 0.55 + 1.45 * Math.min(1, Math.max(0, currSnap.pMechMw / 160))
-      : 0.01;
+    const tripRamp = THREE.MathUtils.clamp((tSim - cfg.tTripS) / 1.2, 0, 1);
+    const thermalSupport = THREE.MathUtils.clamp(
+      (currSnap.pMechMw - STORY_THERMAL_P0_MW) / Math.max(1, 160 - STORY_THERMAL_P0_MW),
+      0,
+      1,
+    );
+    const thermalEffort = Math.max(0.6 * tripRamp, thermalSupport);
+    const thermalLoad = storyResource === "thermal" ? 0.22 + 3.55 * thermalEffort : 0.01;
     refs.smoke.update(dtRender, thermalLoad);
     updateYardPhasors(refs.bess[0], currSnap, "gfm-vsm");
     updateFreqBars([currSnap.fHz, currSnap.fHz]);
@@ -580,6 +585,7 @@ renderer.setAnimationLoop((timestamp: number) => {
 
   updateRotor(fHz, dtRender);
   updateEKin(currSnap.eKinPct);
+  updateThermalEffort(tSim);
   updateEffects(tSim, vPu);
   director.update(mode === "historia" ? tSim : tSim, dtRender);
 
@@ -616,6 +622,25 @@ function updateEKin(eKinPct: number): void {
       mat.color.setHex(0x3a4148);
     }
   });
+}
+
+function updateThermalEffort(tSim: number): void {
+  const thermalActive = mode === "historia"
+    ? STORY_PHASES[storyPhaseIndex].resource === "thermal"
+    : techResource === "thermal";
+  const effort = thermalActive
+    ? THREE.MathUtils.clamp((tSim - cfg.tTripS) / 1.1, 0, 1)
+    : 0;
+  const pulse = effort > 0 ? 0.5 + 0.5 * Math.sin(tRender * 9) : 0;
+  for (const seg of refs.eKinSegments) {
+    seg.scale.setScalar(1 + effort * (0.08 + 0.12 * pulse));
+    const mat = seg.material as THREE.MeshStandardMaterial;
+    if (effort > 0 && mat.emissive.getHex() !== 0) {
+      mat.color.setHex(0x4a2710);
+      mat.emissive.setHex(0xff7a00);
+      mat.emissiveIntensity = 1.25 + 1.2 * pulse;
+    }
+  }
 }
 
 function updateYardPhasors(yard: BessYardRefs, s: SimSnapshot, kind: ResourceKind): void {

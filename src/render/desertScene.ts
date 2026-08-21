@@ -843,9 +843,9 @@ function makeSmokeTexture(withDollar: boolean): THREE.Texture {
   canvas.height = 128;
   const ctx = canvas.getContext("2d")!;
   const grad = ctx.createRadialGradient(64, 64, 6, 64, 64, 62);
-  grad.addColorStop(0, "rgba(38, 36, 34, 0.95)");
-  grad.addColorStop(0.55, "rgba(30, 28, 27, 0.55)");
-  grad.addColorStop(1, "rgba(25, 24, 23, 0)");
+  grad.addColorStop(0, "rgba(12, 13, 14, 0.98)");
+  grad.addColorStop(0.55, "rgba(18, 18, 19, 0.72)");
+  grad.addColorStop(1, "rgba(20, 20, 21, 0)");
   ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.arc(64, 64, 62, 0, Math.PI * 2);
@@ -871,7 +871,7 @@ export function buildSmokeSystem(origin: THREE.Vector3): SmokeSystem {
   const texSmoke = makeSmokeTexture(false);
   const texDollar = makeSmokeTexture(true);
   const puffs: Puff[] = [];
-  const MAX_PUFFS = 52;
+  const MAX_PUFFS = 92;
   let spawnTimer = 0;
 
   function spawn(): void {
