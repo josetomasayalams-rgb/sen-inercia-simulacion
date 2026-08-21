@@ -480,7 +480,9 @@ export function updatePowerFlow(
   const spacing = len / (pf.arrows.length + 1);
   const travel = (tRender * (5 + 12 * intensity)) % spacing;
   pf.arrows.forEach((arrow, i) => {
-    const d = spacing * (i + 1) - travel;
+    // La distancia aumenta desde el recurso hacia la barra. Al completar el
+    // tramo, la flecha reaparece en el origen del recurso.
+    const d = (spacing * i + travel) % len;
     arrow.position.copy(norm).multiplyScalar(d);
     arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), norm);
     arrow.scale.setScalar(0.9 + 0.85 * intensity);
@@ -871,11 +873,12 @@ export function buildSmokeSystem(origin: THREE.Vector3): SmokeSystem {
   const texSmoke = makeSmokeTexture(false);
   const texDollar = makeSmokeTexture(true);
   const puffs: Puff[] = [];
-  const MAX_PUFFS = 92;
+  const MAX_PUFFS = 160;
   let spawnTimer = 0;
 
-  function spawn(): void {
-    const isDollar = Math.random() < 0.62;
+  function spawn(intensity: number): void {
+    const boost = THREE.MathUtils.clamp((intensity - 0.2) / 7, 0, 1);
+    const isDollar = Math.random() < 0.62 + 0.12 * boost;
     const sprite = new THREE.Sprite(
       new THREE.SpriteMaterial({
         map: isDollar ? texDollar : texSmoke,
@@ -893,10 +896,10 @@ export function buildSmokeSystem(origin: THREE.Vector3): SmokeSystem {
       sprite,
       life: 0,
       maxLife,
-      vy: 3.6 + Math.random() * 1.6,
+      vy: 3.6 + 2.4 * boost + Math.random() * 1.8,
       drift: (Math.random() - 0.5) * 0.9,
-      size0: isDollar ? 3.4 + Math.random() * 1.4 : 2.5 + Math.random() * 1.4,
-      size1: isDollar ? 10 + Math.random() * 4 : 8.5 + Math.random() * 4,
+      size0: (isDollar ? 3.4 : 2.5) + 1.8 * boost + Math.random() * 1.4,
+      size1: (isDollar ? 10 : 8.5) + 7 * boost + Math.random() * 4,
     });
     if (puffs.length > MAX_PUFFS) {
       const old = puffs.shift()!;
@@ -911,7 +914,7 @@ export function buildSmokeSystem(origin: THREE.Vector3): SmokeSystem {
       if (intensity > 0.02) {
         spawnTimer += dt * intensity;
         while (spawnTimer > 0.12) {
-          spawn();
+          spawn(intensity);
           spawnTimer -= 0.16;
         }
       }

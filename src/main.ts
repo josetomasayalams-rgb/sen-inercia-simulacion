@@ -551,14 +551,9 @@ renderer.setAnimationLoop((timestamp: number) => {
   // --- telemetría exacta por recurso (mismo snapshot que el HUD) ---
   if (mode === "historia") {
     const storyResource = STORY_PHASES[storyPhaseIndex].resource;
-    const tripRamp = THREE.MathUtils.clamp((tSim - cfg.tTripS) / 1.2, 0, 1);
-    const thermalSupport = THREE.MathUtils.clamp(
-      (currSnap.pMechMw - STORY_THERMAL_P0_MW) / Math.max(1, 160 - STORY_THERMAL_P0_MW),
-      0,
-      1,
-    );
-    const thermalEffort = Math.max(0.6 * tripRamp, thermalSupport);
-    const thermalLoad = storyResource === "thermal" ? 0.22 + 3.55 * thermalEffort : 0.01;
+    // Mínimo técnico visible antes del evento; después se exagera el humo para
+    // comunicar el aumento de combustible/esfuerzo sin alterar el solver.
+    const thermalLoad = storyResource === "thermal" ? 0.12 + 7.2 * thermalEffortLevel(tSim) : 0.01;
     refs.smoke.update(dtRender, thermalLoad);
     updateYardPhasors(refs.bess[0], currSnap, "gfm-vsm");
     updateFreqBars([currSnap.fHz, currSnap.fHz]);
@@ -569,7 +564,8 @@ renderer.setAnimationLoop((timestamp: number) => {
     const limited = currSnap.gflLimited || currSnap.gfmLimited;
     hud.setLimitBadge(limited, limited ? "S/I/SOC" : "");
   } else {
-    refs.smoke.update(dtRender, 0.35 + (techResource === "thermal" ? 0.4 * Math.min(1, Math.max(0, currSnap.pMechMw / 160)) : 0));
+    const thermalLoad = techResource === "thermal" ? 0.12 + 7.2 * thermalEffortLevel(tSim) : 0.01;
+    refs.smoke.update(dtRender, thermalLoad);
     updateYardPhasors(refs.bess[0], currSnap, techResource);
     hud.updateMeters(currSnap, {
       eKinExaggeration: EKIN_EXAGGERATION,
@@ -583,7 +579,7 @@ renderer.setAnimationLoop((timestamp: number) => {
   hud.setEventBadges(currSnap.tripped, currSnap.voltageEventApplied, cfg.tripLabel);
   hud.setCaption(mode === "historia" ? captionStory(tSim) : captionTech(tSim));
 
-  updateRotor(fHz, dtRender);
+  updateRotor(fHz, tSim, dtRender);
   updateEKin(currSnap.eKinPct);
   updateThermalEffort(tSim);
   updateEffects(tSim, vPu);
@@ -597,15 +593,30 @@ renderer.setAnimationLoop((timestamp: number) => {
   renderer.render(refs.scene, director.camera);
 });
 
-function updateRotor(fHz: number, dtRender: number): void {
+function updateRotor(fHz: number, tSim: number, dtRender: number): void {
   if (!running && !finished) return;
   const thermalActive = mode === "historia"
     ? STORY_PHASES[storyPhaseIndex].resource === "thermal"
     : techResource === "thermal";
   if (!thermalActive) return;
   const deviation = fHz / 50 - 1;
-  const rate = ROTOR_VISUAL_REV_S * Math.max(0, 1 + ROTOR_EXAGGERATION * deviation);
+  const effort = thermalEffortLevel(tSim);
+  // Exageración cinematográfica: el solver conserva f(t) y ROCOF físicos. El
+  // factor extra sólo comunica que la unidad sale de mínimo técnico y aumenta
+  // rápidamente su potencia/consumo de combustible.
+  const effortSpeedup = 1 + 3.2 * effort;
+  const rate = ROTOR_VISUAL_REV_S * Math.max(0.18, 1 + ROTOR_EXAGGERATION * deviation) * effortSpeedup;
   refs.rotor.rotateX(2 * Math.PI * rate * dtRender);
+}
+
+function thermalEffortLevel(tSim: number): number {
+  const tripRamp = THREE.MathUtils.clamp((tSim - cfg.tTripS) / 0.7, 0, 1);
+  const supportEffort = THREE.MathUtils.clamp(
+    (currSnap.pMechMw - STORY_THERMAL_P0_MW) / Math.max(1, 160 - STORY_THERMAL_P0_MW),
+    0,
+    1,
+  );
+  return Math.max(0.72 * tripRamp, supportEffort);
 }
 
 function updateEKin(eKinPct: number): void {
@@ -633,12 +644,12 @@ function updateThermalEffort(tSim: number): void {
     : 0;
   const pulse = effort > 0 ? 0.5 + 0.5 * Math.sin(tRender * 9) : 0;
   for (const seg of refs.eKinSegments) {
-    seg.scale.setScalar(1 + effort * (0.08 + 0.12 * pulse));
+    seg.scale.setScalar(1 + effort * (0.16 + 0.24 * pulse));
     const mat = seg.material as THREE.MeshStandardMaterial;
     if (effort > 0 && mat.emissive.getHex() !== 0) {
       mat.color.setHex(0x4a2710);
       mat.emissive.setHex(0xff7a00);
-      mat.emissiveIntensity = 1.25 + 1.2 * pulse;
+      mat.emissiveIntensity = 1.7 + 2.0 * pulse;
     }
   }
 }
@@ -789,7 +800,7 @@ function captionStory(t: number): string {
       case "none":
         return "Esta es la referencia: no entra potencia activa ni reactiva adicional. El déficit queda sobre la red y la frecuencia continúa cayendo.";
       case "thermal":
-        return "La inercia física ya está en el rotor antes del evento: reduce el ROCOF desde el primer instante y la curva se muestra suavizada. Después entran el gobernador y la turbina.";
+        return "La unidad parte en mínimo técnico. Tras el evento, la inercia reduce el ROCOF y luego gobernador y turbina elevan potencia; giro y humo se exageran visualmente para mostrar ese esfuerzo.";
       case "gfm-vsm":
         return "El GFM tampoco tiene rotor: primero se ve el cambio instantáneo del ROCOF y, milisegundos después, su control virtual inyecta potencia activa para contrarrestarlo.";
       default:

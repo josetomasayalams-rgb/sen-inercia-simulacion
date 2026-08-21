@@ -130,7 +130,7 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
         </table>
       </div>
       <div id="scale-note">
-        Exageración visual declarada: variación de velocidad del rotor ×60 · anillo E<sub>k</sub> ×25.
+        Exageración visual declarada: variación de velocidad del rotor ×60 · esfuerzo térmico cinematográfico hasta ×4,2 · anillo E<sub>k</sub> ×25.
         La curva numérica muestra los valores físicos reales.
       </div>
     </aside>

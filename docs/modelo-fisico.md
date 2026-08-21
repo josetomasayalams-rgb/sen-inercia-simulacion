@@ -27,6 +27,11 @@ La máquina agrega desde antes del evento energía `H S` a `E_phys`; por eso red
 el RoCoF físico inicial sin esperar una medición. Después actúan el gobernador,
 la turbina y el AVR mediante dinámicas de primer orden, droop y límites.
 
+La unidad parte visualmente en mínimo técnico (`40 MW`). Tras la perturbación,
+el giro, el pulso naranja y el humo se exageran de forma cinematográfica para
+comunicar el aumento de esfuerzo y combustible. Esta aceleración visual no se
+usa en las ecuaciones: frecuencia, ROCOF y potencia conservan sus valores físicos.
+
 ## 3. GFM tipo VSM
 
 El GFM se representa como una fuente interna `E∠δ` detrás de una reactancia:
