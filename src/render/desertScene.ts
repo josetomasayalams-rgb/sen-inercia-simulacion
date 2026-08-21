@@ -436,6 +436,9 @@ function buildPowerFlow(id: string, color: number, labelText: string): PowerFlow
         roughness: 0.4,
       }),
     );
+    // Se conserva el rótulo de aporte, pero se retiran las flechas animadas
+    // porque distraen de la respuesta principal de cada recurso.
+    arrow.visible = false;
     group.add(arrow);
     arrows.push(arrow);
   }
@@ -443,6 +446,9 @@ function buildPowerFlow(id: string, color: number, labelText: string): PowerFlow
     new THREE.CylinderGeometry(0.16, 0.16, 1, 8),
     new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color), emissiveIntensity: 1.1 }),
   );
+  // La línea de flujo se oculta junto con las flechas; la rotación térmica,
+  // el humo y el resto de la escena permanecen sin cambios.
+  line.visible = false;
   group.add(line);
 
   const label = makeTextSprite(labelText, "hacia la barra", `#${color.toString(16).padStart(6, "0")}`);
@@ -465,8 +471,11 @@ export function updatePowerFlow(
   maxMw: number,
   enabled = true,
 ): void {
-  const start = pMw >= 0 ? from : to;
-  const end = pMw >= 0 ? to : from;
+  // En esta visualización `from` siempre es el recurso y `to` siempre es la
+  // barra. El signo de la telemetría no puede invertir el relato visual: estas
+  // flechas aparecen únicamente para representar inyección hacia la red.
+  const start = from;
+  const end = to;
   const dir = end.clone().sub(start);
   const len = dir.length();
   const norm = dir.clone().normalize();
@@ -477,12 +486,15 @@ export function updatePowerFlow(
   if (!active) return;
   const intensity = THREE.MathUtils.clamp(Math.abs(pMw) / maxMw, 0, 1);
   pf.group.position.copy(start);
-  const spacing = len / (pf.arrows.length + 1);
-  const travel = (tRender * (5 + 12 * intensity)) % spacing;
+  const spacing = len / pf.arrows.length;
+  // Una velocidad base permite leer el sentido apenas comienza el aporte. A
+  // medida que aumenta la inyección, las flechas aceleran de forma evidente.
+  pf.speed = 4.5 + 27 * Math.sqrt(intensity);
+  pf.offset = (tRender * pf.speed) % len;
   pf.arrows.forEach((arrow, i) => {
-    // La distancia aumenta desde el recurso hacia la barra. Al completar el
-    // tramo, la flecha reaparece en el origen del recurso.
-    const d = (spacing * i + travel) % len;
+    // Cada flecha recorre el trayecto completo recurso -> barra. El desfase
+    // evita el antiguo reinicio colectivo que se percibía como flujo inverso.
+    const d = (pf.offset + spacing * i) % len;
     arrow.position.copy(norm).multiplyScalar(d);
     arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), norm);
     arrow.scale.setScalar(0.9 + 0.85 * intensity);
