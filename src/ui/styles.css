@@ -164,14 +164,30 @@ body.hc #caption { font-weight: 600; }
 }
 #btn-clean:hover, #btn-clean:focus-visible { border-color: var(--accent); outline: none; }
 
-#playback-toast {
-  position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%) scale(0.96);
-  padding: 13px 22px; border-radius: 999px; background: rgba(0,0,0,.84);
-  border: 1px solid #ffffff55; color: #fff; font-weight: 700; opacity: 0;
-  pointer-events: none; transition: opacity 180ms ease, transform 180ms ease; z-index: 30;
+#intro-card {
+  position: absolute; left: 53%; top: 22%; z-index: 40;
+  transform: translate(-50%, -50%) scale(1);
+  display: grid; place-items: center; gap: 7px;
+  min-width: 410px; padding: 22px 42px 21px;
+  color: #fff;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.055) 42%, rgba(7,16,29,.16)),
+    rgba(14, 30, 48, .24);
+  border: 1px solid rgba(255,255,255,.48); border-radius: 22px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.42), inset 0 -1px 0 rgba(255,255,255,.08), 0 18px 58px rgba(0,30,65,.24);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  opacity: 1; transition: opacity 320ms ease-out, transform 320ms cubic-bezier(.22,1,.36,1), filter 320ms ease-out;
+  pointer-events: none;
 }
-#playback-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); animation: toast-out 1.4s 0.65s forwards; }
-@keyframes toast-out { to { opacity: 0; } }
+#intro-card::before {
+  content: ""; position: absolute; inset: 1px; border-radius: 21px; pointer-events: none;
+  background: linear-gradient(115deg, rgba(255,255,255,.22), transparent 32%, transparent 68%, rgba(129,202,255,.11));
+  mask: linear-gradient(#000, transparent 52%);
+}
+#intro-card span { color: #fff2a8; font-size: 13px; font-weight: 800; letter-spacing: 3px; text-shadow: 0 1px 12px rgba(255,215,80,.3); }
+#intro-card strong { font: 800 32px ui-monospace, monospace; letter-spacing: .6px; text-shadow: 0 2px 16px rgba(0,0,0,.28); }
+#intro-card.leaving { opacity: 0; transform: translate(-50%, -57%) scale(.975); filter: blur(1.5px); }
 
 /* Modo limpio: conserva fase, frecuencias y gráficas; el botón permite volver. */
 body.ui-clean #topbar,

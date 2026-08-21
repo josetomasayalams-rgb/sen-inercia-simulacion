@@ -3,9 +3,6 @@ import * as THREE from "three";
 export interface BessYardRefs {
   group: THREE.Group;
   socBars: THREE.Mesh[];
-  gridPhasor: THREE.ArrowHelper;
-  resourcePhasor: THREE.ArrowHelper;
-  phasorDisc: THREE.Mesh;
 }
 
 export interface FreqBarRefs {
@@ -16,7 +13,7 @@ export interface FreqBarRefs {
 
 export interface SceneRefs {
   scene: THREE.Scene;
-  rotor: THREE.Mesh;
+  rotor: THREE.Object3D;
   eKinSegments: THREE.Mesh[];
   bess: BessYardRefs[];
   freqBars: FreqBarRefs[];
@@ -51,15 +48,16 @@ export interface PowerFlowVisual {
   group: THREE.Group;
   arrows: THREE.Mesh[];
   line: THREE.Mesh;
+  label: THREE.Sprite;
   speed: number;
   offset: number;
 }
 
-/** Posiciones de las tres estaciones en el modo comparación de historia. */
+/** Posiciones de los dos recursos en el modo comparación de historia. */
 export const CMP_LAYOUT = {
   thermal: new THREE.Vector3(-118, 0, -30),
-  gfl: new THREE.Vector3(78, 0, -30),
-  gfm: new THREE.Vector3(168, 0, -30),
+  // El único patio BESS ocupa la posición cercana originalmente usada por GFL.
+  gfm: new THREE.Vector3(78, 0, -30),
   barZ: -74,
   labelY: 21,
 };
@@ -256,7 +254,7 @@ export function buildDesertScene(canvas: HTMLCanvasElement): { renderer: THREE.W
     scene.add(pad);
     return pad;
   };
-  const bessPads = [makeBessPad(TECH_LAYOUT.bess), makeBessPad(CMP_LAYOUT.gfm)];
+  const bessPads = [makeBessPad(TECH_LAYOUT.bess)];
 
   const thermalGroup = buildThermalPlant();
   thermalGroup.position.copy(TECH_LAYOUT.thermal);
@@ -265,11 +263,6 @@ export function buildDesertScene(canvas: HTMLCanvasElement): { renderer: THREE.W
   const bessA = buildBessYard(0x51606e);
   bessA.group.position.copy(TECH_LAYOUT.bess);
   scene.add(bessA.group);
-
-  const bessB = buildBessYard(0x3d6e8c);
-  bessB.group.position.set(CMP_LAYOUT.gfm.x, 0, CMP_LAYOUT.gfm.z);
-  bessB.group.visible = false;
-  scene.add(bessB.group);
 
   const sub = buildSubstation();
   scene.add(sub.group);
@@ -280,7 +273,6 @@ export function buildDesertScene(canvas: HTMLCanvasElement): { renderer: THREE.W
 
   const freqBars: FreqBarRefs[] = [
     buildFreqBar(CMP_LAYOUT.thermal.x),
-    buildFreqBar(CMP_LAYOUT.gfl.x),
     buildFreqBar(CMP_LAYOUT.gfm.x),
   ];
   for (const bar of freqBars) {
@@ -291,12 +283,10 @@ export function buildDesertScene(canvas: HTMLCanvasElement): { renderer: THREE.W
 
   const labels = [
     makeTextSprite("TÉRMICA", "máquina síncrona", "#e67e22"),
-    makeTextSprite("GRID-FOLLOWING", "solo escucha la red", "#95a5a6"),
     makeTextSprite("GRID-FORMING", "máquina síncrona virtual", "#2ecc71"),
   ];
   labels[0].position.set(CMP_LAYOUT.thermal.x, CMP_LAYOUT.labelY, CMP_LAYOUT.thermal.z + 4);
-  labels[1].position.set(CMP_LAYOUT.gfl.x, CMP_LAYOUT.labelY, CMP_LAYOUT.gfl.z + 4);
-  labels[2].position.set(CMP_LAYOUT.gfm.x, CMP_LAYOUT.labelY, CMP_LAYOUT.gfm.z + 4);
+  labels[1].position.set(CMP_LAYOUT.gfm.x, CMP_LAYOUT.labelY, CMP_LAYOUT.gfm.z + 4);
   for (const l of labels) {
     l.visible = false;
     scene.add(l);
@@ -324,17 +314,16 @@ export function buildDesertScene(canvas: HTMLCanvasElement): { renderer: THREE.W
 
   // --- flujos de potencia agregados (didácticos, escala declarada) ---
   const powerFlows = [
-    buildPowerFlow("thermalToBus", new THREE.Vector3(-30, 8.2, -8), new THREE.Vector3(-22, 8.2, -4), 0xe67e22),
-    buildPowerFlow("gflToBus", new THREE.Vector3(64, 6.2, -14), new THREE.Vector3(30, 8.2, -6), 0x95a5a6),
-    buildPowerFlow("gfmToBus", new THREE.Vector3(154, 6.2, -14), new THREE.Vector3(30, 8.2, 6), 0x2ecc71),
+    buildPowerFlow("thermalToBus", 0xe67e22, "APORTE TÉRMICO"),
+    buildPowerFlow("gfmToBus", 0x2ecc71, "APORTE GFM"),
   ];
   for (const pf of powerFlows) scene.add(pf.group);
 
   const refs: SceneRefs = {
     scene,
-    rotor: thermalGroup.getObjectByName("rotor") as THREE.Mesh,
+    rotor: thermalGroup.getObjectByName("rotor") as THREE.Object3D,
     eKinSegments: thermalGroup.getObjectByName("ekinArc")!.children as THREE.Mesh[],
-    bess: [bessA, bessB],
+    bess: [bessA],
     freqBars,
     labels,
     tripPulse: sub.group.getObjectByName("tripPulse") as THREE.Mesh,
@@ -431,13 +420,11 @@ function makeEventSprite(text: string, accent: string): THREE.Sprite {
   return new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
 }
 
-function buildPowerFlow(id: string, from: THREE.Vector3, to: THREE.Vector3, color: number): PowerFlowVisual {
+function buildPowerFlow(id: string, color: number, labelText: string): PowerFlowVisual {
   const group = new THREE.Group();
-  const dir = to.clone().sub(from);
-  const len = dir.length();
-  const arrowCount = 3;
+  const arrowCount = 6;
   const arrows: THREE.Mesh[] = [];
-  const arrowGeo = new THREE.ConeGeometry(0.55, 1.6, 8);
+  const arrowGeo = new THREE.ConeGeometry(0.9, 2.7, 10);
   arrowGeo.rotateX(Math.PI / 2);
   for (let i = 0; i < arrowCount; i++) {
     const arrow = new THREE.Mesh(
@@ -445,7 +432,7 @@ function buildPowerFlow(id: string, from: THREE.Vector3, to: THREE.Vector3, colo
       new THREE.MeshStandardMaterial({
         color,
         emissive: new THREE.Color(color),
-        emissiveIntensity: 0.75,
+        emissiveIntensity: 1.5,
         roughness: 0.4,
       }),
     );
@@ -453,15 +440,16 @@ function buildPowerFlow(id: string, from: THREE.Vector3, to: THREE.Vector3, colo
     arrows.push(arrow);
   }
   const line = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.06, 0.06, len, 6),
-    new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color), emissiveIntensity: 0.35 }),
+    new THREE.CylinderGeometry(0.16, 0.16, 1, 8),
+    new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color), emissiveIntensity: 1.1 }),
   );
-  line.position.copy(from).add(to).multiplyScalar(0.5);
-  line.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
   group.add(line);
 
-  group.position.copy(from);
-  return { id, group, arrows, line, speed: 0, offset: 0 };
+  const label = makeTextSprite(labelText, "hacia la barra", `#${color.toString(16).padStart(6, "0")}`);
+  label.scale.set(17, 5.3, 1);
+  group.add(label);
+  group.visible = false;
+  return { id, group, arrows, line, label, speed: 0, offset: 0 };
 }
 
 /**
@@ -475,45 +463,47 @@ export function updatePowerFlow(
   pMw: number,
   tRender: number,
   maxMw: number,
+  enabled = true,
 ): void {
   const start = pMw >= 0 ? from : to;
   const end = pMw >= 0 ? to : from;
   const dir = end.clone().sub(start);
   const len = dir.length();
   const norm = dir.clone().normalize();
-  const active = Math.abs(pMw) > 0.5;
+  // La escena decide cuándo el recurso está aportando. No usar un umbral de
+  // potencia evita que el rótulo parpadee al cruzar valores pequeños.
+  const active = enabled;
   pf.group.visible = active;
   if (!active) return;
   const intensity = THREE.MathUtils.clamp(Math.abs(pMw) / maxMw, 0, 1);
   pf.group.position.copy(start);
   const spacing = len / (pf.arrows.length + 1);
-  const travel = (tRender * (0.15 + 0.5 * intensity)) % spacing;
+  const travel = (tRender * (5 + 12 * intensity)) % spacing;
   pf.arrows.forEach((arrow, i) => {
     const d = spacing * (i + 1) - travel;
     arrow.position.copy(norm).multiplyScalar(d);
     arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), norm);
-    arrow.scale.setScalar(0.7 + 0.6 * intensity);
+    arrow.scale.setScalar(0.9 + 0.85 * intensity);
   });
   pf.line.position.set(0, 0, 0).copy(start).add(end).multiplyScalar(0.5).sub(start);
   pf.line.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), norm);
+  pf.line.scale.set(1, len, 1);
+  pf.label.position.copy(norm).multiplyScalar(len * 0.55);
+  pf.label.position.y += 5;
 }
 
 /** Reubica los grupos para cada modo y controla la visibilidad de los extras. */
 export function applyLayout(refs: SceneRefs, mode: "tecnico" | "comparacion"): void {
   const cmp = mode === "comparacion";
   refs.thermalGroup.position.copy(cmp ? CMP_LAYOUT.thermal : TECH_LAYOUT.thermal);
-  const bessPosition = cmp ? CMP_LAYOUT.gfl : TECH_LAYOUT.bess;
+  const bessPosition = cmp ? CMP_LAYOUT.gfm : TECH_LAYOUT.bess;
   refs.bess[0].group.position.copy(bessPosition);
-  refs.bess[1].group.position.copy(CMP_LAYOUT.gfm);
   refs.bessPads[0].position.set(bessPosition.x, 0.16, bessPosition.z);
-  refs.bessPads[1].position.set(CMP_LAYOUT.gfm.x, 0.16, CMP_LAYOUT.gfm.z);
-  refs.bessPads[1].visible = cmp;
   refs.smoke.group.position.set(
     (cmp ? CMP_LAYOUT.thermal : TECH_LAYOUT.thermal).x - 20,
     48,
     (cmp ? CMP_LAYOUT.thermal : TECH_LAYOUT.thermal).z - 22,
   );
-  refs.bess[1].group.visible = cmp;
   for (const bar of refs.freqBars) bar.group.visible = cmp;
   for (const l of refs.labels) l.visible = cmp;
 }
@@ -745,15 +735,19 @@ function buildThermalPlant(): THREE.Group {
   exciterCap.position.set(9.9, 6.2, 8);
   g.add(exciterCap);
 
+  const rotorAssembly = new THREE.Group();
+  rotorAssembly.name = "rotor";
+  rotorAssembly.position.set(2.2, 6.2, 8);
+  g.add(rotorAssembly);
+
   const rotor = new THREE.Mesh(
     new THREE.CylinderGeometry(1.15, 1.15, 13.5, 24),
     new THREE.MeshStandardMaterial({ color: COPPER, roughness: 0.35, metalness: 0.7 }),
   );
   rotor.rotation.z = Math.PI / 2;
-  rotor.position.set(2.2, 6.2, 8);
   rotor.castShadow = true;
-  rotor.name = "rotor";
-  g.add(rotor);
+  rotor.name = "rotorCore";
+  rotorAssembly.add(rotor);
 
   for (let i = 0; i < 3; i++) {
     const marker = new THREE.Mesh(
@@ -763,6 +757,23 @@ function buildThermalPlant(): THREE.Group {
     marker.position.set(-3.2 + i * 5.4, 0, 0);
     rotor.add(marker);
   }
+
+  // Volante exterior con marca asimétrica para hacer legible la rotación y
+  // representar visualmente la energía cinética del conjunto síncrono.
+  const flywheel = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.35, 2.35, 0.75, 28),
+    new THREE.MeshStandardMaterial({ color: 0x6f7b86, roughness: 0.35, metalness: 0.72 }),
+  );
+  flywheel.rotation.z = Math.PI / 2;
+  flywheel.position.x = -5.25;
+  flywheel.castShadow = true;
+  rotorAssembly.add(flywheel);
+  const inertiaMarker = new THREE.Mesh(
+    new THREE.BoxGeometry(0.9, 0.55, 1.05),
+    new THREE.MeshStandardMaterial({ color: 0xffb347, emissive: new THREE.Color(0xff7a00), emissiveIntensity: 1.2 }),
+  );
+  inertiaMarker.position.set(-5.7, 0, 2.15);
+  rotorAssembly.add(inertiaMarker);
 
   for (const bx of [-5.6, 5.6]) {
     const bearing = new THREE.Mesh(
@@ -970,51 +981,9 @@ function buildBessYard(pcsColor: number): BessYardRefs {
   pcs.castShadow = true;
   g.add(pcs);
 
-  const disc = new THREE.Mesh(
-    new THREE.CircleGeometry(6.5, 48),
-    new THREE.MeshBasicMaterial({ color: 0x0b1622, transparent: true, opacity: 0.72, side: THREE.DoubleSide }),
-  );
-  disc.name = "phasorDisc";
-  disc.position.set(0, 17, 2);
-  disc.rotation.x = -Math.PI / 2.6;
-  g.add(disc);
-
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(6.2, 6.5, 48),
-    new THREE.MeshBasicMaterial({ color: 0x9fb6cc, transparent: true, opacity: 0.8, side: THREE.DoubleSide }),
-  );
-  ring.position.copy(disc.position);
-  ring.rotation.copy(disc.rotation);
-  g.add(ring);
-
-  const gridPhasor = new THREE.ArrowHelper(
-    new THREE.Vector3(1, 0, 0),
-    disc.position,
-    6,
-    0xf1c40f,
-    1.4,
-    0.8,
-  );
-  gridPhasor.name = "gridPhasor";
-  g.add(gridPhasor);
-
-  const resourcePhasor = new THREE.ArrowHelper(
-    new THREE.Vector3(1, 0, 0),
-    disc.position,
-    4,
-    0x39d3ff,
-    1.2,
-    0.7,
-  );
-  resourcePhasor.name = "resourcePhasor";
-  g.add(resourcePhasor);
-
   return {
     group: g,
     socBars: socBars.children as THREE.Mesh[],
-    gridPhasor,
-    resourcePhasor,
-    phasorDisc: disc,
   };
 }
 

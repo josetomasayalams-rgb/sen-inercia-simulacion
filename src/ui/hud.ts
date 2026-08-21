@@ -48,7 +48,7 @@ export interface HudRefs {
   setPhase(phase: PhaseInfo | null): void;
   setFinalTable(rows: ComparisonRow[]): void;
   setTimeScale(v: number): void;
-  flashPlaybackState(running: boolean): void;
+  setIntroVisible(visible: boolean): void;
 }
 
 export interface MeterExtras {
@@ -69,7 +69,7 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
   <div id="hud">
     <header id="topbar">
       <div id="title">
-        <h1>SEN — inercia, GFL y GFM-VSM</h1>
+        <h1>SEN — inercia y GFM-VSM</h1>
         <p class="sub">Crucero 220 kV · Norte Grande · equivalente RMS educativo</p>
       </div>
       <div id="badges">
@@ -92,7 +92,7 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
       </div>
       <label>Modo
         <select id="sel-mode">
-          <option value="historia" selected>Historia (cuatro casos comparables)</option>
+          <option value="historia" selected>Historia (tres casos comparables)</option>
           <option value="tecnico">Modo técnico (Crucero)</option>
         </select>
       </label>
@@ -157,19 +157,12 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
       </div>
       <div class="lane" data-lane="1">
         <span class="dot"></span>
-        <span class="lname">GFL-PQ</span>
-        <span class="lf">50,00 <small>Hz</small></span>
-        <span class="lp">0 MW</span>
-        <span class="lst">—</span>
-      </div>
-      <div class="lane" data-lane="2">
-        <span class="dot"></span>
         <span class="lname">Térmica</span>
         <span class="lf">50,00 <small>Hz</small></span>
         <span class="lp">0 MW</span>
         <span class="lst">—</span>
       </div>
-      <div class="lane" data-lane="3">
+      <div class="lane" data-lane="2">
         <span class="dot"></span>
         <span class="lname">GFM-VSM</span>
         <span class="lf">50,00 <small>Hz</small></span>
@@ -179,14 +172,16 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
     </section>
 
     <div id="caption"><span id="caption-text"></span></div>
+    <div id="intro-card" class="hidden" role="status">
+      <span>PERTURBACIÓN</span>
+      <strong>ΔP = −160 MW</strong>
+    </div>
     <div id="phase-banner" class="hidden"><span id="phase-kicker"></span><strong id="phase-title"></strong></div>
     <button id="btn-skip" title="Saltar al evento (N)">⏩ Saltar al evento</button>
     <button id="btn-clean" aria-pressed="false" title="Ocultar o mostrar la información secundaria">◫ Ocultar información</button>
-    <div id="playback-toast" role="status" aria-live="polite"></div>
-
     <footer id="chartbar">
       <canvas id="chart-f"></canvas>
-      <canvas id="chart-rocof" aria-label="Comparación del ROCOF entre sin soporte, grid-following, térmica y grid-forming"></canvas>
+      <canvas id="chart-rocof" aria-label="Comparación del ROCOF entre sin soporte, térmica y grid-forming"></canvas>
       <canvas id="chart-v"></canvas>
       <canvas id="chart-pq"></canvas>
     </footer>
@@ -195,7 +190,8 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
   const $ = <T extends HTMLElement>(id: string): T => root.querySelector(`#${id}`) as T;
 
   const selResource = $<HTMLSelectElement>("sel-resource");
-  for (const [key, label] of Object.entries(RESOURCE_LABELS)) {
+  for (const key of ["none", "thermal", "gfm-vsm"] as ResourceKind[]) {
+    const label = RESOURCE_LABELS[key];
     const opt = document.createElement("option");
     opt.value = key;
     opt.textContent = label;
@@ -233,8 +229,9 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
   });
 
   const fmt = (v: number, d = 1): string => v.toFixed(d).replace(".", ",");
+  let introTimer: number | null = null;
   const laneEls = Array.from(root.querySelectorAll<HTMLElement>("#lanes .lane"));
-  const LANE_DOTS = ["#ff5d4d", "#3498db", "#e67e22", "#2ecc71"];
+  const LANE_DOTS = ["#ff5d4d", "#e67e22", "#2ecc71"];
 
   function laneState(fHz: number): { label: string; cls: string } {
     if (fHz >= 48) return { label: "SOSTIENE", cls: "ok" };
@@ -250,12 +247,17 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
       const select = $<HTMLSelectElement>("sel-speed");
       select.value = String(v);
     },
-    flashPlaybackState(running) {
-      const toast = $("playback-toast");
-      toast.textContent = running ? "▶ Reproduciendo" : "⏸ Simulación pausada";
-      toast.classList.remove("show");
-      void toast.offsetWidth;
-      toast.classList.add("show");
+    setIntroVisible(visible) {
+      const intro = $("intro-card");
+      if (introTimer !== null) window.clearTimeout(introTimer);
+      introTimer = null;
+      if (visible) {
+        intro.classList.remove("hidden", "leaving");
+        return;
+      }
+      if (intro.classList.contains("hidden")) return;
+      intro.classList.add("leaving");
+      introTimer = window.setTimeout(() => intro.classList.add("hidden"), 340);
     },
     updateMeters(s, extras) {
       $("m-f").textContent = s.fHz.toFixed(3);
@@ -331,13 +333,13 @@ export function buildHud(root: HTMLElement, cb: HudCallbacks): HudRefs {
     $("btn-skip").classList.toggle("hidden", !hist);
     $("phase-banner").classList.toggle("hidden", true);
     document.title = hist
-      ? "¿Quién sostiene la red? — cuatro casos comparables"
-      : "SEN — Inercia, GFL y GFM-VSM · Crucero 220 kV";
+      ? "¿Quién sostiene la red? — tres casos comparables"
+      : "SEN — Inercia y GFM-VSM · Crucero 220 kV";
     $("title").querySelector("h1")!.textContent = hist
       ? "¿Quién sostiene la red?"
-      : "SEN — inercia, GFL y GFM-VSM";
+      : "SEN — inercia y GFM-VSM";
     $("title").querySelector(".sub")!.textContent = hist
-      ? "Mismo evento · sin soporte, GFL, térmica y GFM · comparación final"
+      ? "Mismo evento · sin soporte, térmica y GFM-VSM · comparación final"
       : "Crucero 220 kV · Norte Grande · equivalente RMS educativo";
     const cmpH2 = $("comparison").querySelector("h2");
     if (cmpH2) cmpH2.textContent = hist ? "Comparación final del mismo evento" : "Comparación del mismo evento";

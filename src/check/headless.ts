@@ -380,13 +380,11 @@ console.log("\n== Historia — mañana soleada, área equivalente de baja inerci
   const lanes = {
     none: runSimulation(buildSunsetParams("none"), 1 / 60),
     thermal: runSimulation(buildSunsetParams("thermal"), 1 / 60),
-    "gfl-pq": runSimulation(buildSunsetParams("gfl-pq"), 1 / 60),
     "gfm-vsm": runSimulation(buildSunsetParams("gfm-vsm"), 1 / 60),
   };
   const m = {
     none: computeMetrics(lanes.none.samples, buildSunsetParams("none").events.tTripS),
     thermal: computeMetrics(lanes.thermal.samples, buildSunsetParams("thermal").events.tTripS),
-    "gfl-pq": computeMetrics(lanes["gfl-pq"].samples, buildSunsetParams("gfl-pq").events.tTripS),
     "gfm-vsm": computeMetrics(lanes["gfm-vsm"].samples, buildSunsetParams("gfm-vsm").events.tTripS),
   };
   const rocofTheory = (dPu: number, ePhysMWs: number, sBase: number) =>
@@ -394,20 +392,20 @@ console.log("\n== Historia — mañana soleada, área equivalente de baja inerci
 
   check(
     `ROCOF0 historia ≈ ${rocofTheory(0.8, 4200, 200).toFixed(3)} Hz/s`,
-    approx(m["gfl-pq"].rocof0HzS, rocofTheory(0.8, 4200, 200), 0.02),
-    `got ${m["gfl-pq"].rocof0HzS}`,
+    approx(m["gfm-vsm"].rocof0HzS, rocofTheory(0.8, 4200, 200), 0.02),
+    `got ${m["gfm-vsm"].rocof0HzS}`,
   );
-  const referenceDiff = Math.max(...lanes.none.samples.map((s, i) => Math.max(
-    Math.abs(s.fHz - lanes["gfl-pq"].samples[i].fHz),
-    Math.abs(s.vPu - lanes["gfl-pq"].samples[i].vPu),
-    Math.abs(s.rocofHzS - lanes["gfl-pq"].samples[i].rocofHzS),
-  )));
   check(
-    "historia: Sin soporte y GFL-PQ reciben el mismo evento y coinciden",
-    referenceDiff < 1e-9
-      && buildSunsetParams("none").events.tTripS === buildSunsetParams("gfl-pq").events.tTripS
-      && buildSunsetParams("none").events.tVoltageS === buildSunsetParams("gfl-pq").events.tVoltageS,
-    `máxima diferencia=${referenceDiff}`,
+    "historia: los tres casos reciben exactamente los mismos eventos",
+    ["thermal", "gfm-vsm"].every((r) => {
+      const p = buildSunsetParams(r as ResourceKind);
+      const ref = buildSunsetParams("none");
+      return p.events.tTripS === ref.events.tTripS
+        && p.events.dTripPu === ref.events.dTripPu
+        && p.events.tVoltageS === ref.events.tVoltageS
+        && p.events.dQLoadPu === ref.events.dQLoadPu;
+    }),
+    "eventos distintos entre casos",
   );
   check(
     "historia: Sin soporte no inyecta P ni Q",
@@ -420,11 +418,6 @@ console.log("\n== Historia — mañana soleada, área equivalente de baja inerci
     `nadir ${m.thermal.nadirHz}`,
   );
   check(
-    "GFL-PQ deja caer la frecuencia (nadir < 45 Hz) y no inyecta P",
-    m["gfl-pq"].nadirHz < 45 && m["gfl-pq"].pSupportMaxMw < 1e-6,
-    `nadir ${m["gfl-pq"].nadirHz}, Pmax ${m["gfl-pq"].pSupportMaxMw}`,
-  );
-  check(
     "GFM-VSM sostiene la frecuencia (nadir > 47 Hz)",
     m["gfm-vsm"].nadirHz > 47,
     `nadir ${m["gfm-vsm"].nadirHz}`,
@@ -433,11 +426,6 @@ console.log("\n== Historia — mañana soleada, área equivalente de baja inerci
     "GFM ≈ térmica: |nadir GFM − nadir térmica| ≤ 0,6 Hz",
     Math.abs(m["gfm-vsm"].nadirHz - m.thermal.nadirHz) <= 0.6,
     `gfm ${m["gfm-vsm"].nadirHz} vs térmica ${m.thermal.nadirHz}`,
-  );
-  check(
-    "GFM mejora claramente el nadir frente a GFL-PQ",
-    m["gfm-vsm"].nadirHz - m["gfl-pq"].nadirHz > 3,
-    `gfm ${m["gfm-vsm"].nadirHz} vs gfl ${m["gfl-pq"].nadirHz}`,
   );
   check(
     "GFM responde Q al evento reactivo con margen (Q > 15 Mvar)",

@@ -44,6 +44,8 @@ export interface PllParams {
 export interface GflProfileParams {
   pSetPu: number;
   qSetPu: number;
+  /** Banda muerta de frecuencia para la respuesta primaria. */
+  deadbandHz: number;
   droopRf: number;
   kfPuPerHz: number;
   kRocofPuPerHzS: number;

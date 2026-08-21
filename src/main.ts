@@ -29,7 +29,6 @@ interface StoryPhase {
 
 const STORY_PHASES: StoryPhase[] = [
   { resource: "none", title: "Sin soporte · respuesta natural de la red", shortLabel: "Sin soporte" },
-  { resource: "gfl-pq", title: "Grid-following · solo escucha la red", shortLabel: "GFL-PQ" },
   { resource: "thermal", title: "Térmica · máquina síncrona", shortLabel: "Térmica" },
   { resource: "gfm-vsm", title: "Grid-forming · máquina síncrona virtual", shortLabel: "GFM-VSM" },
 ];
@@ -56,9 +55,7 @@ const v = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 function storyCuesFor(resource: ResourceKind): CameraCue[] {
   const responseLook = resource === "thermal"
     ? CMP_LAYOUT.thermal.clone().add(v(0, 10, 0))
-    : resource.startsWith("gfl")
-      ? CMP_LAYOUT.gfl.clone().add(v(0, 10, 0))
-      : resource === "gfm-vsm"
+    : resource === "gfm-vsm"
         ? CMP_LAYOUT.gfm.clone().add(v(0, 10, 0))
         : v(0, 10, 4);
   const responsePos = responseLook.clone().add(v(48, 26, 92));
@@ -98,7 +95,7 @@ let highContrast = true;
 let mode: AppMode = "historia";
 let cfg = STORY_CFG;
 
-// --- cuatro corridas comparables (historia) / recurso seleccionable (técnico) ---
+// --- tres corridas comparables (historia) / recurso seleccionable (técnico) ---
 let storyPhaseIndex = 0;
 let sim: Simulation = createSimulation(buildSunsetParams(STORY_PHASES[0].resource));
 let prevSnap: SimSnapshot = sim.snapshot();
@@ -111,7 +108,8 @@ let scenarioId = "crucero-2026";
 const history = new Map<string, RunRecord>();
 const storyRuns = new Map<ResourceKind, RunRecord>();
 
-let running = true;
+let running = false;
+let awaitingStart = true;
 let timeScale = 1;
 let accumulator = 0;
 let stepCounter = 0;
@@ -137,6 +135,7 @@ const hud = buildHud(app, {
   onPlayPause: togglePlay,
   onRestart: () => restart(true),
   onStep: () => {
+    if (awaitingStart) return;
     if (running) togglePlay();
     advanceOneStep();
   },
@@ -144,7 +143,7 @@ const hud = buildHud(app, {
   onMode: (m) => { if (m !== mode) setMode(m); },
   onSkip: () => {
     // "Saltar al evento": avanzar hasta justo antes del trip
-    if (mode === "historia" && currSnap.t < cfg.tTripS - 0.05) {
+    if (!awaitingStart && mode === "historia" && currSnap.t < cfg.tTripS - 0.05) {
       while (currSnap.t < cfg.tTripS - 0.05) advanceOneStep();
     }
   },
@@ -196,8 +195,7 @@ document.addEventListener("pointerdown", (event) => {
   longPressStartY = event.clientY;
   cancelLongPress();
   longPressTimer = window.setTimeout(() => {
-    togglePlay();
-    hud.flashPlaybackState(running);
+    togglePlay(true);
     if (navigator.vibrate) navigator.vibrate(35);
   }, LONG_PRESS_MS);
 }, true);
@@ -264,7 +262,15 @@ function setMode(m: AppMode): void {
   restart(true);
 }
 
-function togglePlay(): void {
+function togglePlay(fromLongPress = false): void {
+  if (awaitingStart) {
+    if (!fromLongPress) return;
+    awaitingStart = false;
+    running = true;
+    hud.setRunning(true);
+    hud.setIntroVisible(false);
+    return;
+  }
   if (finished) {
     restart(true);
     return;
@@ -278,13 +284,15 @@ function restart(keepHistory: boolean): void {
   if (mode === "historia") {
     storyPhaseIndex = 0;
     storyRuns.clear();
-    startStoryPhase();
+    startStoryPhase(true);
     return;
   }
   accumulator = 0;
   stepCounter = 0;
   finished = false;
+  awaitingStart = false;
   running = true;
+  hud.setIntroVisible(false);
   hud.setRunning(true);
   hud.setPhase(null);
   sim = createSimulation(buildParams(techResource, scenarioId));
@@ -299,15 +307,17 @@ function restart(keepHistory: boolean): void {
   refreshComparisonTable();
 }
 
-function startStoryPhase(): void {
+function startStoryPhase(waitForLongPress = false): void {
   document.body.classList.remove("story-final");
   const phase = STORY_PHASES[storyPhaseIndex];
   director.setCues(storyCuesFor(phase.resource));
   accumulator = 0;
   stepCounter = 0;
   finished = false;
-  running = true;
-  hud.setRunning(true);
+  awaitingStart = waitForLongPress;
+  running = !waitForLongPress;
+  hud.setRunning(running);
+  hud.setIntroVisible(waitForLongPress);
   hud.setPhase({ index: storyPhaseIndex + 1, total: STORY_PHASES.length, title: phase.title });
   sim = createSimulation(buildSunsetParams(phase.resource));
   prevSnap = sim.snapshot();
@@ -318,7 +328,9 @@ function startStoryPhase(): void {
   chartF.setTitle("Frecuencia de la red (Hz) — referencia 50 Hz");
   chartRocof.setTitle(phase.resource === "thermal"
     ? "ROCOF térmico — respuesta suavizada por inercia física"
-    : "ROCOF del inversor — cambio instantáneo sin inercia física");
+    : phase.resource === "gfm-vsm"
+        ? "ROCOF GFM-VSM — soporte virtual rápido, sin rotor físico"
+        : "ROCOF sin soporte — respuesta natural del área");
   chartV.setTitle("Tensión en Crucero 220 kV (pu)");
   chartPQ.setTitle("Potencia de apoyo del caso actual");
   chartF.setLimits(39.5, 50.4, cfg.tEnd);
@@ -369,7 +381,7 @@ function advanceOneStep(): void {
       archiveStoryRun();
       if (storyPhaseIndex < STORY_PHASES.length - 1) {
         storyPhaseIndex++;
-        startStoryPhase();
+        startStoryPhase(false);
       } else {
         finished = true;
         running = false;
@@ -413,9 +425,9 @@ function showStoryComparison(): void {
   chartF.setComparisonMode(true); chartRocof.setComparisonMode(true);
   chartV.setComparisonMode(true); chartPQ.setComparisonMode(true);
   chartF.setTitle("Comparación final · frecuencia");
-  chartRocof.setTitle("ROCOF · referencia vs. GFL vs. térmica vs. GFM");
+  chartRocof.setTitle("ROCOF · sin soporte vs. térmica vs. GFM-VSM");
   chartV.setTitle("Comparación final · tensión en Crucero 220 kV");
-  chartPQ.setTitle("Potencia activa de apoyo · térmica vs. GFM");
+  chartPQ.setTitle("Potencia activa de apoyo · térmica vs. GFM-VSM");
   chartF.setLimits(39.5, 50.4, cfg.tEnd);
   chartRocof.setLimits(-1.2, 0.25, cfg.tEnd);
   chartV.setLimits(0.98, 1.002, cfg.tEnd);
@@ -429,11 +441,11 @@ function showStoryComparison(): void {
       chartRocof.addOverlay({ t: rec.traceT, values: [rec.traceRocof] }, color, phase.shortLabel);
     }
     chartV.addOverlay({ t: rec.traceT, values: [rec.traceV] }, color, phase.shortLabel);
-    if ((phase.resource === "thermal" || phase.resource === "gfm-vsm") && rec.traceP) {
+    if (phase.resource !== "none" && rec.traceP) {
       chartPQ.addOverlay({ t: rec.traceT, values: [rec.traceP] }, color, phase.shortLabel);
     }
   }
-  hud.setPhase({ index: STORY_PHASES.length, total: STORY_PHASES.length, title: "Comparación final de las cuatro respuestas" });
+  hud.setPhase({ index: STORY_PHASES.length, total: STORY_PHASES.length, title: "Comparación final de las tres respuestas" });
   refreshStoryTable();
 }
 
@@ -509,9 +521,6 @@ function refreshComparisonTable(): void {
 }
 
 const timer = new THREE.Timer();
-const discPos = new THREE.Vector3();
-const discQuat = new THREE.Quaternion();
-const tmpDir = new THREE.Vector3();
 let tRender = 0;
 
 renderer.setAnimationLoop((timestamp: number) => {
@@ -546,9 +555,8 @@ renderer.setAnimationLoop((timestamp: number) => {
       ? 0.55 + 1.45 * Math.min(1, Math.max(0, currSnap.pMechMw / 160))
       : 0.01;
     refs.smoke.update(dtRender, thermalLoad);
-    updateYardPhasors(refs.bess[0], currSnap, storyResource.startsWith("gfl") ? storyResource : "gfl-pq");
-    updateYardPhasors(refs.bess[1], currSnap, "gfm-vsm");
-    updateFreqBars([currSnap.fHz, currSnap.fHz, currSnap.fHz]);
+    updateYardPhasors(refs.bess[0], currSnap, "gfm-vsm");
+    updateFreqBars([currSnap.fHz, currSnap.fHz]);
     updateLanes();
     updateFlows(currSnap);
     updateBreaker(tSim);
@@ -585,9 +593,13 @@ renderer.setAnimationLoop((timestamp: number) => {
 
 function updateRotor(fHz: number, dtRender: number): void {
   if (!running && !finished) return;
+  const thermalActive = mode === "historia"
+    ? STORY_PHASES[storyPhaseIndex].resource === "thermal"
+    : techResource === "thermal";
+  if (!thermalActive) return;
   const deviation = fHz / 50 - 1;
   const rate = ROTOR_VISUAL_REV_S * Math.max(0, 1 + ROTOR_EXAGGERATION * deviation);
-  refs.rotor.rotateY(2 * Math.PI * rate * dtRender);
+  refs.rotor.rotateX(2 * Math.PI * rate * dtRender);
 }
 
 function updateEKin(eKinPct: number): void {
@@ -607,29 +619,6 @@ function updateEKin(eKinPct: number): void {
 }
 
 function updateYardPhasors(yard: BessYardRefs, s: SimSnapshot, kind: ResourceKind): void {
-  yard.phasorDisc.getWorldPosition(discPos);
-  yard.phasorDisc.getWorldQuaternion(discQuat);
-
-  yard.gridPhasor.position.copy(discPos);
-  tmpDir.set(1, 0, 0).applyQuaternion(discQuat);
-  yard.gridPhasor.setDirection(tmpDir);
-  yard.gridPhasor.setLength(6 * Math.max(0.2, s.vPu), 1.3, 0.7);
-
-  let angle = 0;
-  let len = 0.5;
-  if (kind === "gfm-vsm") {
-    angle = s.gfmDeltaRad;
-    len = 6 * Math.max(0.2, s.vPu);
-  } else {
-    angle = s.vAngRad;
-    const iMag = Math.hypot(s.pGflMw, s.qGflMvar) / 200;
-    len = 1 + 5 * Math.min(1.2, iMag);
-  }
-  yard.resourcePhasor.position.copy(discPos);
-  tmpDir.set(Math.cos(angle), Math.sin(angle), 0).applyQuaternion(discQuat);
-  yard.resourcePhasor.setDirection(tmpDir);
-  yard.resourcePhasor.setLength(len, 1.1, 0.6);
-
   for (const bar of yard.socBars) {
     const soc = kind === "gfm-vsm" ? s.socGfmPct : s.socPct;
     bar.scale.x = Math.max(0.02, soc / 100);
@@ -646,12 +635,23 @@ function updateFreqBars(fArr: number[]): void {
 }
 
 function updateFlows(s: SimSnapshot): void {
-  const thermalFrom = new THREE.Vector3(-30, 8.2, -8);
-  const gflFrom = new THREE.Vector3(64, 6.2, -14);
-  const gfmFrom = new THREE.Vector3(154, 6.2, -14);
-  updatePowerFlow(refs.powerFlows[0], thermalFrom, FLOW_END, s.pThermalElectricalMw, tRender, 160);
-  updatePowerFlow(refs.powerFlows[1], gflFrom, FLOW_END, s.pGflMw, tRender, 200);
-  updatePowerFlow(refs.powerFlows[2], gfmFrom, FLOW_END, s.pGfmMw, tRender, 200);
+  const storyResource = mode === "historia" ? STORY_PHASES[storyPhaseIndex].resource : techResource;
+  const thermalOrigin = mode === "historia"
+    ? CMP_LAYOUT.thermal.clone().add(new THREE.Vector3(2, 8.2, 8))
+    : new THREE.Vector3(-76, 8.2, -18);
+  const gfmOrigin = mode === "historia"
+    ? CMP_LAYOUT.gfm.clone().add(new THREE.Vector3(0, 6.2, 8))
+    : new THREE.Vector3(74, 6.2, -14);
+  // Las flechas representan potencia adicional causada por la perturbación,
+  // no el despacho térmico previo de 40 MW.
+  const pThermalSupport = storyResource === "thermal"
+    ? Math.max(0, s.pThermalElectricalMw - STORY_THERMAL_P0_MW)
+    : 0;
+  const pGfmSupport = storyResource === "gfm-vsm" ? Math.max(0, s.pGfmMw) : 0;
+  const thermalEnabled = storyResource === "thermal" && s.tripped;
+  const gfmEnabled = storyResource === "gfm-vsm" && s.tripped;
+  updatePowerFlow(refs.powerFlows[0], thermalOrigin, FLOW_END, pThermalSupport, tRender, 160, thermalEnabled);
+  updatePowerFlow(refs.powerFlows[1], gfmOrigin, FLOW_END, pGfmSupport, tRender, 200, gfmEnabled);
 }
 
 function updateBreaker(tSim: number): void {
@@ -744,7 +744,7 @@ function updateEffects(tSim: number, vPu: number): void {
 
 function captionStory(t: number): string {
   if (finished) {
-    return "Comparación final: la referencia y el GFL-PQ coinciden porque ninguno aporta soporte; la térmica y el GFM sí modifican la respuesta, por mecanismos distintos.";
+    return "Comparación final: la térmica aporta inercia física desde el inicio; el GFM-VSM aporta una respuesta virtual rápida y sostiene la tensión.";
   }
   const phase = STORY_PHASES[storyPhaseIndex];
   if (t < 2.0) {
@@ -765,8 +765,6 @@ function captionStory(t: number): string {
         return "Esta es la referencia: no entra potencia activa ni reactiva adicional. El déficit queda sobre la red y la frecuencia continúa cayendo.";
       case "thermal":
         return "La inercia física ya está en el rotor antes del evento: reduce el ROCOF desde el primer instante y la curva se muestra suavizada. Después entran el gobernador y la turbina.";
-      case "gfl-pq":
-        return "El GFL no aporta inercia física: el ROCOF cambia de forma instantánea. Mide la red con PLL, pero aquí P/Q están fijos y no hay FFR.";
       case "gfm-vsm":
         return "El GFM tampoco tiene rotor: primero se ve el cambio instantáneo del ROCOF y, milisegundos después, su control virtual inyecta potencia activa para contrarrestarlo.";
       default:
@@ -822,7 +820,7 @@ window.addEventListener("keydown", (e) => {
 });
 
 function hudSkip(): void {
-  if (mode === "historia" && currSnap.t < cfg.tTripS - 0.05) {
+  if (!awaitingStart && mode === "historia" && currSnap.t < cfg.tTripS - 0.05) {
     while (currSnap.t < cfg.tTripS - 0.05) advanceOneStep();
   }
 }

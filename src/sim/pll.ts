@@ -67,7 +67,11 @@ export function gflPowerCommand(
   const sat = (x: number): number => Math.min(g.reserveUpPu, Math.max(-g.reserveDownPu, x));
   let pExtra = 0;
   if (profile === "rpf") {
-    pExtra = sat(-(s.fMeasHz - f0Hz) / g.droopRf);
+    const dfHz = s.fMeasHz - f0Hz;
+    const dfOutsideDeadbandHz = Math.abs(dfHz) <= g.deadbandHz
+      ? 0
+      : dfHz - Math.sign(dfHz) * g.deadbandHz;
+    pExtra = sat(-dfOutsideDeadbandHz / g.droopRf);
   } else if (profile === "ffr") {
     pExtra = sat(g.kfPuPerHz * (f0Hz - s.fMeasHz) + g.kRocofPuPerHzS * -s.rocofMeasHzS);
   }

@@ -103,6 +103,9 @@ export function buildParams(resource: ResourceKind, scenarioId: string): SimPara
     gfl: {
       pSetPu: 0,
       qSetPu: 0,
+      // Respuesta primaria: 5 % de droop (2,5 Hz para 1 pu) y banda
+      // muerta de 30 mHz. El PLL y tauMeas introducen la dinámica de medida.
+      deadbandHz: 0.03,
       droopRf: 2.5,
       kfPuPerHz: 0.8,
       kRocofPuPerHzS: 0.5,
